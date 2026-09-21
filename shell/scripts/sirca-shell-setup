@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Share a Sirca Shell setup.   sirca-shell-setup export FILE   |   sirca-shell-setup import FILE [--wallpapers]
+export: the LOOK and LAYOUT keys of ~/.config/sirca-shell/config.json (bar and dock layout, sizes, blur/haze/tint, clock,
+        corner radius, colour themes, accent, mode) as one JSON file. Personal things are left out: pinned apps, favourites,
+        hidden tray items, the wallpaper folder; wallpaper PATHS inside colour themes are dropped unless --wallpapers.
+import: checks the file (a JSON object, known keys only, sane types and sizes), backs the config up next to it
+        (config.json.bak-<time>), then merges the keys in. The running shell picks the change up at once (it watches the file).
+        A file from someone else can only change how the shell LOOKS: unknown keys are refused, nothing is executed."""
+import json, os, re, sys, time
+CFG = os.path.expanduser("~/.config/sirca-shell/config.json")
+PREFIXES = ("bar", "dock", "clock")
+NAMES = {"accent", "mode", "theme", "themes", "cornerRadius", "dateFormat", "dodge", "hazeStrength", "lobePad", "rimAlpha", "sheenAlpha", "tintAlpha",
+         "sheetHeight", "sheetWidth", "titleIcon", "titleMaxWidth", "levelMeter", "quickSettingsStyle"}
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+def shareable(k): return k in NAMES or (k.startswith(PREFIXES) and k[:1].islower())
+def load(p):
+    try:
+        with open(p, encoding="utf-8") as f: d = json.load(f)
+    except FileNotFoundError: return {}
+    if not isinstance(d, dict): sys.exit("%s is not a JSON object" % p)
+    return d
+def check(k, v):
+    """a value that the shell can take without surprises"""
+    if k == "accent": return isinstance(v, str) and bool(HEX.match(v))
+    if k == "mode": return v in ("light", "dark")
+    if k == "theme": return isinstance(v, str) and len(v) <= 40
+    if k == "themes":
+        if not isinstance(v, dict) or len(v) > 40: return False
+        for name, t in v.items():
+            if not isinstance(name, str) or len(name) > 40 or not isinstance(t, dict): return False
+            if not HEX.match(str(t.get("accent", ""))): return False
+            for w in ("light", "dark", "folders"):
+                if w in t and not (isinstance(t[w], str) and len(t[w]) < 600): return False
+            if set(t) - {"accent", "light", "dark", "folders"}: return False
+        return True
+    if isinstance(v, bool): return True
+    if isinstance(v, (int, float)): return -10000 < v < 10000
+    if isinstance(v, str): return len(v) <= 80
+    if isinstance(v, list): return len(v) <= 24 and all(isinstance(x, str) and len(x) <= 40 for x in v)       # bar groups: widget names
+    return False
+def main():
+    if len(sys.argv) < 3 or sys.argv[1] not in ("export", "import"): sys.exit(__doc__)
+    cmd, path, keep_walls = sys.argv[1], sys.argv[2], "--wallpapers" in sys.argv
+    if cmd == "export":
+        cfg = load(CFG); out = {k: v for k, v in cfg.items() if shareable(k) and check(k, v)}
+        if "themes" in out and not keep_walls: out["themes"] = {n: {k: v for k, v in t.items() if k in ("accent", "folders")} for n, t in out["themes"].items()}
+        with open(path, "w", encoding="utf-8") as f: json.dump({"sircaShellSetup": 1, "config": out}, f, indent=2, ensure_ascii=False); f.write("\n")
+        print("exported %d keys to %s" % (len(out), path)); return
+    if os.path.getsize(path) > 512 * 1024: sys.exit("refused: the file is larger than 512 KB")
+    d = load(path)
+    if d.get("sircaShellSetup") != 1 or not isinstance(d.get("config"), dict): sys.exit("refused: not a Sirca Shell setup file")
+    bad = [k for k, v in d["config"].items() if not shareable(k) or not check(k, v)]
+    if bad: sys.exit("refused: keys that a setup file may not carry, or with odd values: " + ", ".join(sorted(bad)[:12]))
+    new = dict(d["config"]); cfg = load(CFG)
+    if "themes" in new:                                # their colours, YOUR wallpapers: keep the pictures of themes you already have
+        mine = cfg.get("themes", {}) if isinstance(cfg.get("themes"), dict) else {}
+        for n, t in new["themes"].items():
+            for w in ("light", "dark"):
+                if not (w in t and os.path.isfile(t[w])):
+                    t.pop(w, None)
+                    if n in mine and isinstance(mine[n], dict) and mine[n].get(w): t[w] = mine[n][w]
+    if os.path.isfile(CFG):
+        bak = CFG + ".bak-" + time.strftime("%Y%m%d-%H%M%S")
+        with open(CFG, "rb") as a, open(bak, "wb") as b: b.write(a.read())
+        print("backup:", bak)
+    cfg.update(new); os.makedirs(os.path.dirname(CFG), exist_ok=True)
+    tmp = CFG + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f: json.dump(cfg, f, indent=4, ensure_ascii=False)
+    os.replace(tmp, CFG); print("imported %d keys" % len(new))
+main()

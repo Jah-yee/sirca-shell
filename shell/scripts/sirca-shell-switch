@@ -1,0 +1,92 @@
+#!/bin/bash
+# sirca-shell-switch on|off|status|plasma off|plasma on — hand the top bar and dock over to Sirca Shell, or give them back to Plasma.
+#   plasma off: run the session WITHOUT plasmashell (Sirca Shell draws the wallpaper and serves the volume/brightness display)
+#   plasma on : bring plasmashell back (always done first by "off")
+#   on : saves Plasma's layout, removes every Plasma panel from the running layout, enables sirca-shell
+#   off: stops sirca-shell and restores the saved Plasma layout exactly
+set -euo pipefail
+STATE="$HOME/.local/state/sirca-shell/pre-switch"; OSD="$HOME/.local/lib/qt6/qml/org/kde/plasma/workspace/osd"; A="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; R="$HOME/.config/plasmashellrc"
+
+CFG="$HOME/.config/sirca-shell/config.json"
+setcfg() { python3 - "$CFG" "$1" "$2" <<'PY'
+import json,os,sys
+p,k,v=sys.argv[1],sys.argv[2],sys.argv[3]
+os.makedirs(os.path.dirname(p),exist_ok=True)
+try: o=json.load(open(p))
+except Exception: o={}
+if v=="": o.pop(k,None)
+else: o[k]=(v=="true")
+json.dump(o,open(p,"w"),indent=1)
+PY
+}
+plasma_on() {   # the shell must let go of org.kde.plasmashell BEFORE plasmashell starts, or plasmashell refuses to run
+    setcfg withoutPlasmashell ""; sleep 1.5
+    systemctl --user unmask plasma-plasmashell.service >/dev/null 2>&1 || true
+    systemctl --user start plasma-plasmashell.service
+}
+plasma_off() {
+    systemctl --user is-active -q sirca-shell.service || { echo "Sirca Shell is not running; refusing to stop plasmashell"; exit 1; }
+    systemctl --user stop plasma-plasmashell.service
+    systemctl --user mask plasma-plasmashell.service >/dev/null 2>&1      # nothing (login, watchdogs, my own scripts) may start it behind our back
+    setcfg withoutPlasmashell true
+}
+case "${1:-status}" in
+  on)
+    if [ -f "$STATE/appletsrc" ]; then echo "already switched on (saved layout exists in $STATE); run 'off' first"; exit 1; fi
+    mkdir -p "$STATE"; systemctl --user stop plasma-plasmashell; sleep 2
+    cp "$A" "$STATE/appletsrc"; cp "$R" "$STATE/plasmashellrc"
+    python3 - "$A" "$R" <<'PY'
+import re,sys
+a,r=sys.argv[1],sys.argv[2]
+def drop(path, pat):
+    s=open(path).read()
+    out=[]; keep=True
+    for block in re.split(r'(?m)^(?=\[)', s):
+        if not block.strip(): continue
+        head=block.split('\n',1)[0]
+        if re.match(pat, head): continue
+        out.append(block if block.endswith('\n\n') else block.rstrip('\n')+'\n\n')
+    open(path,'w').write(''.join(out))
+# every containment whose plugin is a panel (whatever its number is on this machine)
+ids=[]
+for block in re.split(r'(?m)^(?=\[)', open(a).read()):
+    m=re.match(r'^\[Containments\]\[(\d+)\]\s*$', block.split('\n',1)[0])
+    if m and re.search(r'(?m)^plugin=org\.kde\.panel\s*$', block): ids.append(m.group(1))
+if ids:
+    alt='|'.join(ids)
+    drop(a, r'^\[Containments\]\[(%s)\](\[|$)' % alt)
+    drop(r, r'^\[PlasmaViews\]\[Panel (%s)\]' % alt)
+print("removed Plasma panels:", ', '.join(ids) if ids else "none found")
+PY
+    # volume/brightness show inside the bar: swap plasmashell's OSD popup for the silent one (signals keep flowing)
+    # (only where Plasma's OSD module has been overridden, see glass-desktop; otherwise Plasma's own popup simply stays)
+    SILENT=""; for c in "$HOME/.local/share/sirca-shell/Osd.silent.qml" /usr/local/share/sirca-shell/Osd.silent.qml /usr/share/sirca-shell/Osd.silent.qml; do [ -f "$c" ] && { SILENT="$c"; break; }; done
+    if [ -f "$OSD/Osd.qml" ] && [ -n "$SILENT" ]; then cp "$OSD/Osd.qml" "$STATE/Osd.qml"; cp "$SILENT" "$OSD/Osd.qml"; fi
+    systemctl --user start plasma-plasmashell
+    systemctl --user enable --now sirca-shell.service
+    # Super / Alt+F1: the service runs with --own-launcher-key and takes them from plasmashell's (now widget-less) launcher action
+    echo "Sirca Shell is on. 'sirca-shell-switch off' restores the Plasma panels." ;;
+  off)
+    plasma_on_needed=0; [ -L "$HOME/.config/systemd/user/plasma-plasmashell.service" ] && plasma_on_needed=1
+    [ "$plasma_on_needed" = 1 ] && { setcfg withoutPlasmashell ""; systemctl --user unmask plasma-plasmashell.service >/dev/null 2>&1 || true; }
+    systemctl --user disable --now sirca-shell.service 2>/dev/null || true
+    "$(command -v sirca-shell || echo "$HOME/.local/bin/sirca-shell")" --release-launcher-key >/dev/null 2>&1 || true   # Super / Alt+F1 back to Plasma's launcher (picked up when plasmashell starts below)
+    kwriteconfig6 --file kwinrc --group ModifierOnlyShortcuts --key Meta --delete 2>/dev/null || true
+    if [ -f "$STATE/Osd.qml" ]; then cp "$STATE/Osd.qml" "$OSD/Osd.qml"; rm -f "$STATE/Osd.qml"; fi
+    if [ ! -f "$STATE/appletsrc" ]; then systemctl --user restart plasma-plasmashell; echo "no saved layout in $STATE; nothing to restore (Plasma panels were never removed)"; exit 0; fi
+    systemctl --user stop plasma-plasmashell; sleep 2
+    cp "$STATE/appletsrc" "$A"; cp "$STATE/plasmashellrc" "$R"; rm -f "$STATE/appletsrc" "$STATE/plasmashellrc"
+    systemctl --user start plasma-plasmashell
+    echo "Plasma panels restored." ;;
+  plasma)
+    case "${2:-}" in
+      off) plasma_off; echo "plasmashell is off (masked). Sirca Shell draws the wallpaper and the volume/brightness display. Back: sirca-shell-switch plasma on" ;;
+      on) plasma_on; echo "plasmashell is back." ;;
+      *) echo "usage: sirca-shell-switch plasma off|on"; exit 2 ;;
+    esac ;;
+  status)
+    [ -L "$HOME/.config/systemd/user/plasma-plasmashell.service" ] && echo "plasmashell: OFF (masked), session runs on Sirca Shell alone" || echo "plasmashell: $(systemctl --user is-active plasma-plasmashell.service 2>/dev/null || true)"
+    echo "sirca-shell.service: $(systemctl --user is-active sirca-shell.service 2>/dev/null || true) / $(systemctl --user is-enabled sirca-shell.service 2>/dev/null || true)"
+    [ -f "$STATE/appletsrc" ] && echo "Plasma panels: removed (saved layout in $STATE)" || echo "Plasma panels: in place" ;;
+  *) echo "usage: sirca-shell-switch on|off|status|plasma off|plasma on"; exit 2 ;;
+esac

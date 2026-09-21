@@ -1,0 +1,12 @@
+// ---- Glass Desktop (2026-09-19): readable accent + selection colours ------------------------------------------------
+// The desktop's selection colour is translucent white (16 % white glass). GTK hands it to Firefox without the alpha,
+// so Firefox got solid white highlights with near-white text. These set Firefox's own colours instead: the light navy
+// used as the accent in the terminal. Remove this block (and reset the prefs in about:config) to go back.
+user_pref("ui.accentcolor", "#4c6ed6");
+user_pref("ui.accentcolortext", "#ffffff");
+user_pref("ui.highlight", "#4c6ed6");
+user_pref("ui.highlighttext", "#ffffff");
+user_pref("ui.selecteditem", "#4c6ed6");
+user_pref("ui.selecteditemtext", "#ffffff");
+user_pref("ui.textSelectAttentionBackground", "#f6a03a");
+user_pref("ui.textSelectAttentionForeground", "#161718");

@@ -1,0 +1,13 @@
+{
+  "KPlugin": {
+    "Id": "glasstranslucent",
+    "Name": "Glass: translucent apps",
+    "Description": "Keeps listed apps translucent (the glass effect's ForceBlurClasses blurs behind them). For apps that set their window class only after the window is shown, where window rules never match.",
+    "Version": "1.0",
+    "License": "GPL-3.0-or-later",
+    "Authors": [{ "Name": "onur" }]
+  },
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js",
+  "KPackageStructure": "KWin/Script"
+}

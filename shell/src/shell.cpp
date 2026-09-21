@@ -1,0 +1,662 @@
+#include "shell.h"
+#include "shellcorona.h"
+#include "osdservice.h"
+#include <KGlobalAccel>
+#include <QAction>
+#include <QDBusArgument>
+#include <QJsonArray>
+#include <KWindowEffects>
+#include <KWindowSystem>
+#include <KWayland/Client/connection_thread.h>
+#include <KWayland/Client/fakeinput.h>
+#include <KWayland/Client/registry.h>
+#include <LayerShellQt/Window>
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusServiceWatcher>
+#include <QDBusInterface>
+#include <QDBusMessage>
+#include <QDBusReply>
+#include <QDBusVariant>
+#include <QDir>
+#include <QProcess>
+#include <QFile>
+#include <QGuiApplication>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
+#include <KConfigGroup>
+#include <KSharedConfig>
+#include <QElapsedTimer>
+#include <QScopeGuard>
+#include <QPainterPath>
+#include <QRegion>
+#include <QStandardPaths>
+#include <QTimer>
+#include <QUrl>
+#include <QDebug>
+
+
+// ---- the shell's own global shortcuts ---------------------------------------------------------------------------------
+// Keys are owned by Sirca Shell (component "sirca-shell" in kglobalaccel), not by KWin's key bindings. `kwin` names the
+// window-manager action that carries a window operation out (invoked directly over D-Bus); empty = handled in QML.
+// `owner`/`ownerAction` say who gets the key back when the shell is switched off.
+struct GlassShortcut { const char *id; const char *text; const char *key; const char *kwin; const char *owner; const char *ownerAction; };
+static const GlassShortcut kShortcuts[] = {
+    {"show-desktop",   "Show Desktop",             "Meta+D",        "",                        "kwin", "Show Desktop"},
+    {"win-maximize",   "Maximize Window",          "Meta+Up",       "Window Maximize",         "kwin", "Window Maximize"},
+    {"win-maximize2",  "Maximize Window",          "Meta+PgUp",     "Window Maximize",         "kwin", "Window Maximize"},
+    {"win-minimize",   "Minimize Window",          "Meta+Down",     "Window Minimize",         "kwin", "Window Minimize"},
+    {"win-tile-left",  "Tile Window Left",         "Meta+Left",     "Window Quick Tile Left",  "kwin", "Window Quick Tile Left"},
+    {"win-tile-right", "Tile Window Right",        "Meta+Right",    "Window Quick Tile Right", "kwin", "Window Quick Tile Right"},
+    {"win-close",      "Close Window",             "Alt+F4",        "Window Close",            "kwin", "Window Close"},
+    {"win-menu",       "Window Menu",              "Alt+F3",        "Window Operations Menu",  "kwin", "Window Operations Menu"},
+    {"win-kill",       "Kill Window",              "Meta+Ctrl+Esc", "Kill Window",             "kwin", "Kill Window"},
+    {"overview",       "Overview",                 "Meta+W",        "Overview",                "kwin", "Overview"},
+    {"grid-view",      "All Windows Grid",         "Meta+G",        "Grid View",               "kwin", "Grid View"},
+    {"zoom-in",        "Zoom In",                  "Meta+=",        "view_zoom_in",            "kwin", "view_zoom_in"},
+    {"zoom-out",       "Zoom Out",                 "Meta+-",        "view_zoom_out",           "kwin", "view_zoom_out"},
+    {"power",          "Power Menu",               "Ctrl+Alt+Del",  "",                        "ksmserver", "Log Out"},            // Plasma's logout screen key, handed back on exit
+    {"screenshot",     "Screenshot",               "Print",         "",                        "org.kde.spectacle.desktop", "_launch"},   // Spectacle keeps Meta+Shift+S and gets Print back on exit
+    {"record",         "Record Screen",            "Meta+Shift+R",  "",                        "org.kde.spectacle.desktop", "RecordRegion"},   // handed back on exit
+    {"screenshot-2",   "Screenshot",               "Meta+Shift+S",  "",                        "org.kde.spectacle.desktop", "_launch"},   // for keyboards without a Print key
+    {"tiles",          "Tile Picker",              "Meta+A",        "",                        "plasmashell", "next activity"},      // handed back on exit
+    {"clipboard",      "Clipboard History",        "Meta+V",        "",                        "plasmashell", "show-on-mouse-pos"},   // Klipper's key, handed back on exit
+    {"search",         "Search",                   "Meta+Space",    "",                        "",     ""},          // ours alone: nothing to hand back
+    {"dock-1", "Dock Entry 1", "Meta+1", "", "plasmashell", "activate task manager entry 1"},
+    {"dock-2", "Dock Entry 2", "Meta+2", "", "plasmashell", "activate task manager entry 2"},
+    {"dock-3", "Dock Entry 3", "Meta+3", "", "plasmashell", "activate task manager entry 3"},
+    {"dock-4", "Dock Entry 4", "Meta+4", "", "plasmashell", "activate task manager entry 4"},
+    {"dock-5", "Dock Entry 5", "Meta+5", "", "plasmashell", "activate task manager entry 5"},
+    {"dock-6", "Dock Entry 6", "Meta+6", "", "plasmashell", "activate task manager entry 6"},
+    {"dock-7", "Dock Entry 7", "Meta+7", "", "plasmashell", "activate task manager entry 7"},
+    {"dock-8", "Dock Entry 8", "Meta+8", "", "plasmashell", "activate task manager entry 8"},
+    {"dock-9", "Dock Entry 9", "Meta+9", "", "plasmashell", "activate task manager entry 9"},
+};
+
+QList<QKeySequence> Shell::launcherKeys()
+{
+    // "Meta" must come from the string: QKeySequence(Qt::META) serialises empty and kglobalaccel ignores it
+    return {QKeySequence::fromString(QStringLiteral("Meta")), QKeySequence(Qt::ALT | Qt::Key_F1)};
+}
+
+QAction *Shell::launcherAction(QObject *parent)
+{
+    auto *a = new QAction(parent);
+    a->setObjectName(QStringLiteral("toggle-launcher"));
+    a->setText(QStringLiteral("Toggle Application Launcher"));
+    a->setProperty("componentName", QStringLiteral("sirca-shell"));
+    a->setProperty("componentDisplayName", QStringLiteral("Sirca Shell"));
+    return a;
+}
+
+void Shell::releaseLauncherKey()
+{
+    QAction *mine = launcherAction(nullptr);
+    KGlobalAccel::self()->setShortcut(mine, {}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->removeAllShortcuts(mine);
+    // write the keys back onto plasmashell's launcher action; its Kickoff picks them up when plasmashell next starts
+    auto *theirs = new QAction;
+    theirs->setObjectName(QStringLiteral("activate application launcher"));
+    theirs->setText(QStringLiteral("Activate Application Launcher"));
+    theirs->setProperty("componentName", QStringLiteral("plasmashell"));
+    theirs->setProperty("componentDisplayName", QStringLiteral("plasmashell"));
+    for (const QKeySequence &k : launcherKeys()) KGlobalAccel::stealShortcutSystemwide(k);
+    KGlobalAccel::self()->setShortcut(theirs, launcherKeys(), KGlobalAccel::NoAutoloading);
+    // every key of our own set goes back to the action that had it
+    for (const GlassShortcut &g : kShortcuts) {
+        QAction mine; mine.setObjectName(QString::fromLatin1(g.id)); mine.setProperty("componentName", QStringLiteral("sirca-shell"));
+        KGlobalAccel::self()->setShortcut(&mine, {}, KGlobalAccel::NoAutoloading); KGlobalAccel::self()->removeAllShortcuts(&mine);
+        if (!*g.owner) continue;                                     // a key nobody had before us
+        auto *theirs2 = new QAction; theirs2->setObjectName(QString::fromLatin1(g.ownerAction)); theirs2->setText(QString::fromLatin1(g.ownerAction));
+        theirs2->setProperty("componentName", QString::fromLatin1(g.owner));
+        const QKeySequence key = QKeySequence::fromString(QString::fromLatin1(g.key));
+        KGlobalAccel::stealShortcutSystemwide(key);
+        QList<QKeySequence> keys = KGlobalAccel::self()->shortcut(theirs2); if (!keys.contains(key)) keys << key;
+        KGlobalAccel::self()->setShortcut(theirs2, keys, KGlobalAccel::NoAutoloading);
+    }
+    // and Alt+Tab back to KWin's switcher
+    const QList<QPair<QString, QKeySequence>> kwinKeys{{QStringLiteral("Walk Through Windows"), QKeySequence(Qt::ALT | Qt::Key_Tab)}, {QStringLiteral("Walk Through Windows (Reverse)"), QKeySequence::fromString(QStringLiteral("Alt+Shift+Tab"))}};
+    for (const auto &k : kwinKeys) {
+        for (const char *mine : {"switch-windows", "switch-windows-reverse"}) { QAction m; m.setObjectName(QString::fromLatin1(mine)); m.setProperty("componentName", QStringLiteral("sirca-shell")); KGlobalAccel::self()->setShortcut(&m, {}, KGlobalAccel::NoAutoloading); KGlobalAccel::self()->removeAllShortcuts(&m); }
+        auto *a = new QAction; a->setObjectName(k.first); a->setText(k.first);
+        a->setProperty("componentName", QStringLiteral("kwin")); a->setProperty("componentDisplayName", QStringLiteral("KWin"));
+        KGlobalAccel::stealShortcutSystemwide(k.second);
+        KGlobalAccel::self()->setShortcut(a, {QKeySequence(Qt::META | Qt::Key_Tab), k.second}, KGlobalAccel::NoAutoloading);
+    }
+}
+
+Shell::Shell(QObject *parent) : QObject(parent)
+{
+    const qint64 ctorStart = msSinceStart();
+    auto ctorDone = qScopeGuard([ctorStart] { qInfo("sirca-shell: start-up: Shell singleton built in %lld ms (at %lld ms)", msSinceStart() - ctorStart, ctorStart); });
+    QTimer::singleShot(0, this, [this] { initFakeInput(); });
+    watchConfig();
+    {   // follow org.kde.plasmashell coming and going
+        auto bus = QDBusConnection::sessionBus();
+        const QString name = QStringLiteral("org.kde.plasmashell");
+        // "running" = somebody ELSE owns the name (in without-plasmashell mode we own it ourselves for the OSD service)
+        const QString me = bus.baseService();
+        const QString owner = bus.interface() ? bus.interface()->serviceOwner(name).value() : QString();
+        m_plasmaRunning = !owner.isEmpty() && owner != me;
+        auto *w = new QDBusServiceWatcher(name, bus, QDBusServiceWatcher::WatchForOwnerChange, this);
+        connect(w, &QDBusServiceWatcher::serviceOwnerChanged, this, [this, me](const QString &, const QString &, const QString &newOwner) {
+            const bool on = !newOwner.isEmpty() && newOwner != me; if (on != m_plasmaRunning) { m_plasmaRunning = on; Q_EMIT plasmaRunningChanged(); }
+            updateOsdClaim(); });
+        m_osd = new OsdService(this);
+        connect(m_osd, &OsdService::osdProgress, this, [this](const QString &icon, int percent, int max, const QString &text) { Q_EMIT dbusSignal(QStringLiteral("org.kde.osdService"), QStringLiteral("osdProgress"), {icon, percent, max, text}); });
+        connect(m_osd, &OsdService::osdText, this, [this](const QString &icon, const QString &text) { Q_EMIT dbusSignal(QStringLiteral("org.kde.osdService"), QStringLiteral("osdText"), {icon, text}); });
+    }
+
+    (void)KWindowSystem::showingDesktop();   // prime KWindowSystem's Wayland connection early
+    auto bus = QDBusConnection::sessionBus();
+    if (!bus.registerService(QStringLiteral("onur.SircaShell"))) qWarning() << "sirca-shell: D-Bus name onur.SircaShell is taken (second instance?)";
+    else bus.registerObject(QStringLiteral("/SircaShell"), this, QDBusConnection::ExportScriptableSlots);
+    // Super / Alt+F1: on Plasma 6 the bare Meta tap is a KGlobalAccel shortcut owned by plasmashell's launcher widget,
+    // which is gone once our dock replaces the panels. Only taken with --own-launcher-key (the service passes it), so a
+    // hand-started test instance never steals Super from Plasma; `sirca-shell --release-launcher-key` hands it back.
+    if (QCoreApplication::arguments().contains(QStringLiteral("--own-launcher-key"))) {
+        auto *a = launcherAction(this);
+        const QList<QKeySequence> keys = launcherKeys();
+        // always steal: the availability check reports a bare modifier as free, after which setShortcut silently drops it
+        for (const QKeySequence &k : keys) KGlobalAccel::stealShortcutSystemwide(k);
+        KGlobalAccel::self()->setShortcut(a, keys, KGlobalAccel::NoAutoloading);
+        connect(a, &QAction::triggered, this, &Shell::launcherToggleRequested);
+        // Our own Alt+Tab (KWin's switcher went missing on this machine, and ours matches the glass anyway)
+        auto addSwitch = [this](const char *id, const QString &text, const QKeySequence &key, bool reverse) {
+            auto *act = new QAction(this);
+            act->setObjectName(QString::fromLatin1(id)); act->setText(text);
+            act->setProperty("componentName", QStringLiteral("sirca-shell")); act->setProperty("componentDisplayName", QStringLiteral("Sirca Shell"));
+            KGlobalAccel::stealShortcutSystemwide(key);
+            KGlobalAccel::self()->setShortcut(act, {key}, KGlobalAccel::NoAutoloading);
+            connect(act, &QAction::triggered, this, [this, reverse] { Q_EMIT switcherRequested(reverse); });
+        };
+        for (const GlassShortcut &g : kShortcuts) {
+            auto *act = new QAction(this);
+            act->setObjectName(QString::fromLatin1(g.id)); act->setText(QString::fromLatin1(g.text));
+            act->setProperty("componentName", QStringLiteral("sirca-shell")); act->setProperty("componentDisplayName", QStringLiteral("Sirca Shell"));
+            const QKeySequence key = QKeySequence::fromString(QString::fromLatin1(g.key));
+            KGlobalAccel::stealShortcutSystemwide(key);
+            KGlobalAccel::self()->setShortcut(act, {key}, KGlobalAccel::NoAutoloading);
+            const QString id = QString::fromLatin1(g.id), kwin = QString::fromLatin1(g.kwin);
+            connect(act, &QAction::triggered, this, [this, id, kwin] {
+                if (!kwin.isEmpty()) {   // a window operation: the window manager performs it, asked directly (not through its key bindings)
+                    QDBusMessage m = QDBusMessage::createMethodCall(QStringLiteral("org.kde.kglobalaccel"), QStringLiteral("/component/kwin"), QStringLiteral("org.kde.kglobalaccel.Component"), QStringLiteral("invokeShortcut"));
+                    m.setArguments({kwin}); QDBusConnection::sessionBus().call(m, QDBus::NoBlock);
+                }
+                Q_EMIT shortcutActivated(id);
+            });
+        }
+        addSwitch("switch-windows", QStringLiteral("Switch Windows"), QKeySequence(Qt::ALT | Qt::Key_Tab), false);
+        addSwitch("switch-windows-reverse", QStringLiteral("Switch Windows (Reverse)"), QKeySequence::fromString(QStringLiteral("Alt+Shift+Tab")), true);   // (Alt|Shift|Backtab serialises empty)
+    }
+}
+
+void Shell::setupLayer(QQuickWindow *window, const QString &edge, int exclusiveZone, const QString &scope)
+{
+    if (!window) return;
+    auto *lw = LayerShellQt::Window::get(window);
+    lw->setLayer(LayerShellQt::Window::LayerTop);
+    lw->setScope(scope);
+    lw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
+    lw->setAnchors(edge == QLatin1String("bottom") ? LayerShellQt::Window::AnchorBottom : LayerShellQt::Window::AnchorTop);
+    lw->setExclusiveZone(exclusiveZone);
+    ShellCorona::rememberStrut(edge == QLatin1String("bottom"), exclusiveZone);   // no corona is created for this
+}
+
+void Shell::setExclusiveZone(QQuickWindow *window, int zone)
+{
+    if (window) LayerShellQt::Window::get(window)->setExclusiveZone(zone);
+}
+
+void Shell::setKeyboardExclusive(QQuickWindow *window, bool exclusive)
+{
+    if (!window) return;
+    LayerShellQt::Window::get(window)->setKeyboardInteractivity(exclusive ? LayerShellQt::Window::KeyboardInteractivityExclusive : LayerShellQt::Window::KeyboardInteractivityOnDemand);
+    window->requestUpdate();
+}
+
+void Shell::setKeyboardMode(QQuickWindow *window, const QString &mode)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    W::get(window)->setKeyboardInteractivity(mode == QLatin1String("none") ? W::KeyboardInteractivityNone : mode == QLatin1String("exclusive") ? W::KeyboardInteractivityExclusive : W::KeyboardInteractivityOnDemand);
+    window->requestUpdate();
+}
+
+static QRegion regionFor(const QVariantList &rects)
+{
+    QRegion region;
+    for (const QVariant &v : rects) {
+        const QVariantMap m = v.toMap();
+        const QRectF r(m.value("x").toReal(), m.value("y").toReal(), m.value("w").toReal(), m.value("h").toReal());
+        if (r.isEmpty()) continue;
+        QPainterPath p;
+        p.addRoundedRect(r, m.value("r").toReal(), m.value("r").toReal());
+        region |= QRegion(p.toFillPolygon().toPolygon());
+    }
+    return region;
+}
+
+void Shell::setShape(QQuickWindow *window, const QVariantList &rects)
+{
+    if (!window) return;
+    const QRegion region = regionFor(rects);
+    KWindowEffects::enableBlurBehind(window, !region.isEmpty(), region);
+    window->setMask(region);
+}
+
+void Shell::setSceneRegions(QQuickWindow *window, const QVariantList &panels, const QVariantList &holes)
+{
+    if (!window) return;
+    const QRegion glass = regionFor(panels);
+    KWindowEffects::enableBlurBehind(window, !glass.isEmpty(), glass);
+    QRegion mask(0, 0, window->width(), window->height());
+    for (const QVariant &h : holes) { const QVariantMap m = h.toMap(); mask -= QRect(qRound(m.value(QStringLiteral("x")).toReal()), qRound(m.value(QStringLiteral("y")).toReal()), qRound(m.value(QStringLiteral("w")).toReal()), qRound(m.value(QStringLiteral("h")).toReal())); }
+    window->setMask(mask);
+}
+
+QVariant Shell::dbusCall(const QString &service, const QString &path, const QString &iface, const QString &method, const QVariantList &args)
+{
+    QDBusInterface i(service, path, iface, QDBusConnection::sessionBus());
+    QDBusMessage reply = i.callWithArgumentList(QDBus::Block, method, args);
+    if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty()) return {};
+    const QVariant first = reply.arguments().first();
+    if (first.userType() == qMetaTypeId<QDBusVariant>()) return first.value<QDBusVariant>().variant();   // Properties.Get
+    return first;
+}
+
+void Shell::dbusSend(const QString &service, const QString &path, const QString &iface, const QString &method, const QVariantList &args)
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(service, path, iface, method);
+    msg.setArguments(args);
+    QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+void Shell::dbusSendTyped(const QString &service, const QString &path, const QString &iface, const QString &method, const QString &signature, const QVariantList &args)
+{
+    QVariantList typed;
+    for (int i = 0; i < args.size() && i < signature.size(); ++i) {
+        const QChar t = signature.at(i);
+        if (t == QLatin1Char('i')) typed << QVariant(qRound(args.at(i).toDouble()));
+        else if (t == QLatin1Char('d')) typed << QVariant(args.at(i).toDouble());
+        else if (t == QLatin1Char('s')) typed << QVariant(args.at(i).toString());
+        else if (t == QLatin1Char('b')) typed << QVariant(args.at(i).toBool());
+        else if (t == QLatin1Char('S')) typed << QVariant(args.at(i).toStringList());   // 'as'
+        else typed << args.at(i);
+    }
+    QDBusMessage msg = QDBusMessage::createMethodCall(service, path, iface, method);
+    msg.setArguments(typed);
+    QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+}
+
+QString Shell::configPath() const
+{
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/sirca-shell/config.json");
+}
+
+QVariantMap Shell::loadConfig() const
+{
+    QFile f(configPath());
+    if (!f.open(QIODevice::ReadOnly)) return {};
+    return QJsonDocument::fromJson(f.readAll()).object().toVariantMap();
+}
+
+void Shell::setShapePolygon(QQuickWindow *window, const QVariantList &points, const QVariantList &maskExtra, bool blur)
+{
+    if (!window) return;
+    QPolygon poly;
+    for (int i = 0; i + 1 < points.size(); i += 2)
+        poly << QPoint(qRound(points.at(i).toReal()), qRound(points.at(i + 1).toReal()));
+    const QRegion region = poly.size() >= 3 ? QRegion(poly) : QRegion();
+    KWindowEffects::enableBlurBehind(window, blur && !region.isEmpty(), blur ? region : QRegion());   // blur off: the shape still takes input
+    QRegion mask = region;
+    for (int i = 0; i + 3 < maskExtra.size(); i += 4)
+        mask |= QRect(qRound(maskExtra.at(i).toReal()), qRound(maskExtra.at(i + 1).toReal()), qRound(maskExtra.at(i + 2).toReal()), qRound(maskExtra.at(i + 3).toReal()));
+    if (mask.isEmpty()) mask = QRegion(0, 0, 1, 1);   // an empty mask would mean "the whole window takes input"
+    window->setMask(mask);
+}
+
+void Shell::saveConfigKeys(const QVariantMap &values)
+{
+    QDir().mkpath(QFileInfo(configPath()).absolutePath());
+    QJsonObject o;
+    { QFile f(configPath()); if (f.open(QIODevice::ReadOnly)) o = QJsonDocument::fromJson(f.readAll()).object(); }
+    for (auto it = values.begin(); it != values.end(); ++it) o.insert(it.key(), QJsonValue::fromVariant(it.value()));
+    QFile f(configPath());
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(QJsonDocument(o).toJson());
+}
+
+void Shell::removeConfigKeys(const QStringList &keys)
+{
+    QJsonObject o;
+    { QFile f(configPath()); if (f.open(QIODevice::ReadOnly)) o = QJsonDocument::fromJson(f.readAll()).object(); }
+    for (const QString &k : keys) o.remove(k);
+    QFile f(configPath());
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(QJsonDocument(o).toJson());
+}
+
+QVariantMap Shell::sysStats()
+{
+    QVariantMap out{{QStringLiteral("cpu"), 0.0}, {QStringLiteral("mem"), 0.0}};
+    { QFile f(QStringLiteral("/proc/stat"));
+      if (f.open(QIODevice::ReadOnly)) { const QList<QByteArray> p = f.readLine().simplified().split(' ');     // cpu user nice system idle iowait irq softirq steal
+        quint64 total = 0, idle = 0; for (int i = 1; i < p.size() && i <= 8; ++i) { const quint64 v = p.at(i).toULongLong(); total += v; if (i == 4 || i == 5) idle += v; }
+        if (m_cpuTotal && total > m_cpuTotal) out[QStringLiteral("cpu")] = 1.0 - double(idle - m_cpuIdle) / double(total - m_cpuTotal);
+        m_cpuTotal = total; m_cpuIdle = idle; } }
+    { QFile f(QStringLiteral("/proc/meminfo"));
+      if (f.open(QIODevice::ReadOnly)) { double tot = 0, avail = 0;
+        for (int i = 0; i < 6; ++i) { const QByteArray l = f.readLine(); if (l.startsWith("MemTotal:")) tot = l.mid(9).simplified().split(' ').first().toDouble(); else if (l.startsWith("MemAvailable:")) avail = l.mid(13).simplified().split(' ').first().toDouble(); }
+        if (tot > 0) out[QStringLiteral("mem")] = 1.0 - avail / tot; } }
+    return out;
+}
+
+void Shell::saveConfigKey(const QString &key, const QVariant &value)
+{
+    QDir().mkpath(QFileInfo(configPath()).absolutePath());
+    QJsonObject o;
+    { QFile f(configPath()); if (f.open(QIODevice::ReadOnly)) o = QJsonDocument::fromJson(f.readAll()).object(); }
+    o.insert(key, QJsonValue::fromVariant(value));
+    QFile f(configPath());
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(QJsonDocument(o).toJson());
+}
+
+void Shell::dbusListen(const QString &service, const QString &path, const QString &iface, const QString &signal)
+{
+    QDBusConnection::sessionBus().connect(service, path, iface, signal, this, SLOT(onDbusSignal(QDBusMessage)));
+}
+
+void Shell::onDbusSignal(const QDBusMessage &msg)
+{
+    QVariantList out;
+    for (const QVariant &v : msg.arguments()) {
+        if (v.userType() == qMetaTypeId<QDBusArgument>()) {
+            const auto a = v.value<QDBusArgument>();
+            if (a.currentType() == QDBusArgument::MapType) { QVariantMap m; a >> m; out << m; }
+            else out << QVariant();
+        } else out << v;
+    }
+    Q_EMIT dbusSignal(msg.interface(), msg.member(), out);
+}
+
+QQuickItem *Shell::appletItem(const QString &plugin)
+{
+    return ShellCorona::exists() ? ShellCorona::self()->findItem(plugin) : nullptr;      // asking must not start the hosting layer
+}
+
+void Shell::setShowingDesktop(bool showing)
+{
+    // KWindowSystem binds the plasma window-management global lazily: the very first request can be dropped while it
+    // connects. Ask, then check shortly after and ask once more if nothing changed.
+    KWindowSystem::setShowingDesktop(showing);
+    QTimer::singleShot(300, this, [showing] { if (KWindowSystem::showingDesktop() != showing) KWindowSystem::setShowingDesktop(showing); });
+}
+
+QString Shell::defaultTerminal() const
+{
+    const QString cfg = KSharedConfig::openConfig(QStringLiteral("kdeglobals"))->group(QStringLiteral("General")).readEntry("TerminalApplication", QString());
+    if (!cfg.isEmpty() && !QStandardPaths::findExecutable(cfg.section(QLatin1Char(' '), 0, 0)).isEmpty()) return cfg.section(QLatin1Char(' '), 0, 0);
+    for (const char *t : {"ghostty", "konsole", "kitty", "alacritty", "foot", "gnome-terminal", "xterm"}) if (!QStandardPaths::findExecutable(QString::fromLatin1(t)).isEmpty()) return QString::fromLatin1(t);
+    return QStringLiteral("xterm");
+}
+
+void Shell::setupWallpaper(QQuickWindow *window, bool takesInput)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    auto *lw = W::get(window);
+    lw->setLayer(W::LayerBackground);
+    lw->setScope(QStringLiteral("sirca-shell-wallpaper"));
+    lw->setKeyboardInteractivity(W::KeyboardInteractivityNone);
+    lw->setAnchors(W::Anchors(W::AnchorTop | W::AnchorBottom | W::AnchorLeft | W::AnchorRight));
+    lw->setExclusiveZone(-1);
+    if (takesInput) window->setMask(QRegion());                       // the desktop: right click menu, a click closes popups
+    else window->setMask(QRegion(0, 0, 1, 1));                        // only a picture: clicks reach what is below
+}
+
+QString Shell::plasmaWallpaper() const
+{
+    // the last Image= of Plasma's desktop containments is the one for the current activity on a single screen
+    QFile f(QDir::homePath() + QStringLiteral("/.config/plasma-org.kde.plasma.desktop-appletsrc"));
+    QString found;
+    if (f.open(QIODevice::ReadOnly)) {
+        const QList<QByteArray> lines = f.readAll().split('\n');
+        for (const QByteArray &l : lines) if (l.startsWith("Image=")) found = QString::fromUtf8(l.mid(6)).trimmed();
+    }
+    if (found.startsWith(QLatin1String("file://"))) found = QUrl(found).toLocalFile();
+    return QFileInfo::exists(found) ? found : QString();
+}
+
+QStringList Shell::wallpaperFiles(const QString &folder) const
+{
+    QStringList out;
+    const QStringList filters{QStringLiteral("*.jpg"), QStringLiteral("*.jpeg"), QStringLiteral("*.png"), QStringLiteral("*.webp")};
+    QDir top(folder);
+    for (const QFileInfo &fi : top.entryInfoList(filters, QDir::Files, QDir::Name)) out << fi.absoluteFilePath();
+    for (const QFileInfo &sub : top.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
+        if (sub.fileName().startsWith(QLatin1String("originals"))) continue;                    // source files of generated sets
+        for (const QFileInfo &fi : QDir(sub.absoluteFilePath()).entryInfoList(filters, QDir::Files, QDir::Name)) out << fi.absoluteFilePath();
+    }
+    return out;
+}
+
+void Shell::setupCatcher(QQuickWindow *window)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    auto *lw = W::get(window);
+    lw->setLayer(W::LayerTop);
+    lw->setScope(QStringLiteral("sirca-shell-catcher"));          // not "dock": KWin must not type it as a panel
+    lw->setKeyboardInteractivity(W::KeyboardInteractivityNone);
+    lw->setAnchors(W::Anchors(W::AnchorTop | W::AnchorBottom | W::AnchorLeft | W::AnchorRight));
+    lw->setExclusiveZone(-1);                                       // cover the whole output, ignore everyone's struts
+}
+
+void Shell::setCatcherHoles(QQuickWindow *window, const QVariantList &holes)
+{
+    if (!window) return;
+    QRegion region(QRect(QPoint(0, 0), window->size()));
+    for (int i = 0; i + 3 < holes.size(); i += 4)
+        region -= QRect(qRound(holes.at(i).toReal()), qRound(holes.at(i + 1).toReal()), qRound(holes.at(i + 2).toReal()), qRound(holes.at(i + 3).toReal()));
+    window->setMask(region);
+    window->requestUpdate();
+}
+
+void Shell::setupSwitcher(QQuickWindow *window)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    auto *lw = W::get(window);
+    lw->setLayer(W::LayerOverlay);
+    lw->setScope(QStringLiteral("dock"));                          // "dock" = the Glass effect gives it the panel treatment
+    lw->setKeyboardInteractivity(W::KeyboardInteractivityExclusive);
+    lw->setAnchors(W::Anchors());                                  // no anchors: the compositor centres it
+    lw->setExclusiveZone(-1);
+}
+
+void Shell::setupSearch(QQuickWindow *window)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    auto *lw = W::get(window);
+    lw->setLayer(W::LayerOverlay);
+    lw->setScope(QStringLiteral("dock"));
+    lw->setKeyboardInteractivity(W::KeyboardInteractivityExclusive);
+    lw->setAnchors(W::Anchors(W::AnchorTop | W::AnchorBottom | W::AnchorLeft | W::AnchorRight));
+    lw->setExclusiveZone(-1);
+}
+
+bool Shell::hasProgram(const QString &name) const { return !QStandardPaths::findExecutable(name).isEmpty(); }
+
+bool Shell::kwinHasAction(const QString &action) const
+{
+    QDBusMessage m = QDBusMessage::createMethodCall(QStringLiteral("org.kde.kglobalaccel"), QStringLiteral("/component/kwin"), QStringLiteral("org.kde.kglobalaccel.Component"), QStringLiteral("shortcutNames"));
+    const QDBusReply<QStringList> r = QDBusConnection::sessionBus().call(m, QDBus::Block, 800);
+    return r.isValid() && r.value().contains(action);
+}
+
+void Shell::tileActiveWindow(double xFraction, double widthFraction)
+{
+    // KWin moves windows for scripts, not for clients: write a three-line script, run it once, unload it
+    const QString name = QStringLiteral("sirca-shell-tile");
+    const QString file = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + QStringLiteral("/sirca-shell-tile.js");
+    { QFile f(file); if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) return;
+      f.write(QStringLiteral("const w = workspace.activeWindow;\n"
+                             "if (w && w.normalWindow && w.moveable && w.resizeable) {\n"
+                             "  const a = workspace.clientArea(KWin.MaximizeArea, w);\n"
+                             "  w.setMaximize(false, false);\n"
+                             "  w.frameGeometry = { x: Math.round(a.x + a.width * %1), y: a.y, width: Math.round(a.width * %2), height: a.height };\n"
+                             "}\n").arg(xFraction, 0, 'f', 5).arg(widthFraction, 0, 'f', 5).toUtf8()); }
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    const QString svc = QStringLiteral("org.kde.KWin"), path = QStringLiteral("/Scripting"), iface = QStringLiteral("org.kde.kwin.Scripting");
+    { QDBusMessage u = QDBusMessage::createMethodCall(svc, path, iface, QStringLiteral("unloadScript")); u.setArguments({name}); bus.call(u, QDBus::Block, 500); }
+    QDBusMessage l = QDBusMessage::createMethodCall(svc, path, iface, QStringLiteral("loadScript")); l.setArguments({file, name});
+    const QDBusReply<int> id = bus.call(l, QDBus::Block, 1000);
+    if (!id.isValid() || id.value() < 0) return;
+    bus.call(QDBusMessage::createMethodCall(svc, QStringLiteral("/Scripting/Script%1").arg(id.value()), QStringLiteral("org.kde.kwin.Script"), QStringLiteral("run")), QDBus::NoBlock);
+    QTimer::singleShot(1500, this, [name] { QDBusMessage u = QDBusMessage::createMethodCall(QStringLiteral("org.kde.KWin"), QStringLiteral("/Scripting"), QStringLiteral("org.kde.kwin.Scripting"), QStringLiteral("unloadScript")); u.setArguments({name}); QDBusConnection::sessionBus().call(u, QDBus::NoBlock); });
+}
+
+QString Shell::kwinShortcutKey(const QString &action) const
+{
+    const QList<QKeySequence> keys = KGlobalAccel::self()->globalShortcut(QStringLiteral("kwin"), action);
+    for (const QKeySequence &k : keys) if (!k.isEmpty()) return k.toString(QKeySequence::NativeText);
+    return {};
+}
+
+static QElapsedTimer s_sinceStart;
+void Shell::markStart() { s_sinceStart.start(); }
+qint64 Shell::msSinceStart() { return s_sinceStart.isValid() ? s_sinceStart.elapsed() : -1; }
+int Shell::sinceStart() const { return s_sinceStart.isValid() ? int(s_sinceStart.elapsed()) : -1; }
+
+void Shell::setupCapture(QQuickWindow *window)
+{
+    if (!window) return;
+    using W = LayerShellQt::Window;
+    auto *lw = W::get(window);
+    lw->setLayer(W::LayerOverlay);
+    lw->setScope(QStringLiteral("glass-capture"));                       // not "dock": the Glass effect leaves it alone
+    lw->setKeyboardInteractivity(W::KeyboardInteractivityExclusive);
+    lw->setAnchors(W::Anchors(W::AnchorTop | W::AnchorBottom | W::AnchorLeft | W::AnchorRight));
+    lw->setExclusiveZone(-1);
+}
+
+void Shell::notify(const QString &title, const QString &text, const QString &imagePath, const QString &showPath)
+{
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    const QString svc = QStringLiteral("org.freedesktop.Notifications"), path = QStringLiteral("/org/freedesktop/Notifications");
+    QDBusMessage m = QDBusMessage::createMethodCall(svc, path, svc, QStringLiteral("Notify"));
+    QVariantMap hints{{QStringLiteral("desktop-entry"), QStringLiteral("sirca-shell")}};
+    if (!imagePath.isEmpty()) hints.insert(QStringLiteral("image-path"), imagePath);
+    QStringList actions;
+    if (!showPath.isEmpty()) actions = {QStringLiteral("default"), QStringLiteral("Show in folder"), QStringLiteral("show"), QStringLiteral("Show in folder")};
+    m.setArguments({QStringLiteral("Sirca Shell"), uint(0), QStringLiteral("camera-photo"), title, text, actions, hints, 6000});
+    if (showPath.isEmpty()) { bus.call(m, QDBus::NoBlock); return; }
+    if (!m_notifyListening) {
+        m_notifyListening = true;
+        bus.connect(svc, path, svc, QStringLiteral("ActionInvoked"), this, SLOT(onNotificationAction(uint, QString)));
+        bus.connect(svc, path, svc, QStringLiteral("NotificationClosed"), this, SLOT(onNotificationClosed(uint, uint)));
+    }
+    auto *w = new QDBusPendingCallWatcher(bus.asyncCall(m), this);           // the id comes back in the reply
+    connect(w, &QDBusPendingCallWatcher::finished, this, [this, showPath](QDBusPendingCallWatcher *w) {
+        w->deleteLater();
+        const QDBusPendingReply<uint> reply = *w;
+        if (!reply.isError()) m_notifyPaths.insert(reply.value(), showPath);
+    });
+}
+
+void Shell::onNotificationAction(uint id, const QString &)
+{
+    const QString file = m_notifyPaths.take(id);
+    if (file.isEmpty()) return;
+    // Dolphin directly, not org.freedesktop.FileManager1: Nautilus, Nemo and Dolphin all register that name here and
+    // D-Bus activation would pick whichever it likes. --select opens the folder with the file highlighted.
+    if (!QProcess::startDetached(QStringLiteral("dolphin"), {QStringLiteral("--select"), file}))
+        QProcess::startDetached(QStringLiteral("xdg-open"), {QFileInfo(file).absolutePath()});
+}
+
+void Shell::onNotificationClosed(uint id, uint) { if (m_notifyPaths.size() > 64) m_notifyPaths.clear(); Q_UNUSED(id) }   // entries stay for the history; just bounded
+
+void Shell::setBlurRegion(QQuickWindow *window, const QVariantList &rects)
+{
+    if (!window) return;
+    const QRegion region = regionFor(rects);
+    KWindowEffects::enableBlurBehind(window, !region.isEmpty(), region);
+}
+
+bool Shell::altHeld() const
+{
+    return QGuiApplication::queryKeyboardModifiers().testFlag(Qt::AltModifier);
+}
+
+void Shell::initFakeInput()
+{
+    if (m_fakeTried) return;
+    m_fakeTried = true;
+    auto *conn = KWayland::Client::ConnectionThread::fromApplication(this);
+    if (!conn) return;
+    auto *registry = new KWayland::Client::Registry(this);
+    connect(registry, &KWayland::Client::Registry::fakeInputAnnounced, this, [this, registry](quint32 name, quint32 version) {
+        auto *fake = registry->createFakeInput(name, version, this);
+        fake->authenticate(QStringLiteral("Sirca Shell"), QStringLiteral("pass the click that closed a popup on to the window under it"));
+        m_fakeInput = fake;
+        qInfo("sirca-shell: fake input ready (clicks that dismiss a popup are passed on)");
+    });
+    registry->create(conn);
+    registry->setup();
+}
+
+void Shell::replayClick(int button)
+{
+    initFakeInput();
+    auto *fake = qobject_cast<KWayland::Client::FakeInput *>(m_fakeInput);
+    if (!fake || !fake->isValid()) { qWarning("sirca-shell: fake input is not available (org_kde_kwin_fake_input missing from sirca-shell.desktop?): the click is not passed on"); return; }
+    fake->requestPointerButtonClick(Qt::MouseButton(button));
+}
+
+void Shell::watchConfig()
+{
+    const QString file = configPath(), dir = QFileInfo(file).absolutePath();
+    QDir().mkpath(dir);
+    m_configDebounce.setSingleShot(true);
+    m_configDebounce.setInterval(30);
+    connect(&m_configDebounce, &QTimer::timeout, this, [this, file] {
+        if (QFile::exists(file) && !m_configWatcher.files().contains(file)) m_configWatcher.addPath(file);   // editors replace the file
+        ++m_configRevision;
+        Q_EMIT configRevisionChanged();
+    });
+    m_configWatcher.addPath(dir);
+    if (QFile::exists(file)) m_configWatcher.addPath(file);
+    connect(&m_configWatcher, &QFileSystemWatcher::fileChanged, this, [this] { m_configDebounce.start(); });
+    connect(&m_configWatcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_configDebounce.start(); });
+}
+
+void Shell::removeConfigKey(const QString &key)
+{
+    QJsonObject o;
+    { QFile f(configPath()); if (f.open(QIODevice::ReadOnly)) o = QJsonDocument::fromJson(f.readAll()).object(); }
+    if (!o.contains(key)) return;
+    o.remove(key);
+    QFile f(configPath());
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) f.write(QJsonDocument(o).toJson());
+}
+
+bool Shell::runDetached(const QString &program, const QStringList &arguments)
+{
+    return QProcess::startDetached(program, arguments);
+}
+
+QString Shell::homePath() const { return QDir::homePath(); }
+
+void Shell::setWithoutPlasmashell(bool on) { if (on == m_withoutPlasmashell) return; m_withoutPlasmashell = on; updateOsdClaim(); }
+bool Shell::servesOsd() const { return m_osd && m_osd->claimed(); }
+
+void Shell::updateOsdClaim()
+{
+    if (!m_osd) return;
+    const bool before = m_osd->claimed();
+    if (m_withoutPlasmashell && !m_plasmaRunning) m_osd->claim(); else m_osd->release();
+    if (before != m_osd->claimed()) { qInfo("sirca-shell: org.kde.osdService %s", m_osd->claimed() ? "served by the shell (no plasmashell)" : "released"); Q_EMIT plasmaRunningChanged(); }
+}

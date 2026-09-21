@@ -1,0 +1,19 @@
+/* Glass Desktop — Firefox window buttons. Firefox draws its own title bar buttons and ignores the GTK stylesheet for
+ * their size, so they are restyled here: the same 16 px glyph-free dots as the KWin decoration and the GTK apps,
+ * monochrome at rest, red / green / amber under the pointer. Generated values: decoration.buttonSize, dark.negative/positive/warning. */
+.titlebar-buttonbox-container { align-items: center !important; }
+.titlebar-buttonbox { align-items: center !important; gap: 12px !important; padding-inline: 12px 13px !important; }
+.titlebar-button {
+  appearance: none !important; -moz-default-appearance: none !important;
+  width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important; max-height: 16px !important;
+  padding: 0 !important; margin: 0 !important; border: none !important; border-radius: 50% !important;
+  background-color: rgba(255, 255, 255, 0.17) !important; list-style-image: none !important;
+}
+.titlebar-button > .toolbarbutton-icon { display: none !important; }
+.titlebar-close { background-color: rgba(255, 255, 255, 0.36) !important; }
+.titlebar-close:hover { background-color: #e5484d !important; }
+.titlebar-max:hover, .titlebar-restore:hover { background-color: #4cc38a !important; }
+.titlebar-min:hover { background-color: #f6a03a !important; }
+.titlebar-button:hover:active { filter: brightness(0.85); }
+:root:-moz-window-inactive .titlebar-button { background-color: rgba(255, 255, 255, 0.09) !important; }
+:root:-moz-window-inactive .titlebar-close { background-color: rgba(255, 255, 255, 0.14) !important; }

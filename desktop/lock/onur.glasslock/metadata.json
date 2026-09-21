@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/Shell",
+    "KPlugin": {
+        "Authors": [ { "Name": "onur" } ],
+        "Description": "Glass Desktop lock screen (only the lockscreen part of a Plasma shell package; everything else falls back to the default shell)",
+        "Id": "onur.glasslock",
+        "License": "GPL-2.0-or-later",
+        "Name": "Glass Lock",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2",
+    "X-Plasma-FallbackPackage": "org.kde.plasma.desktop"
+}

@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Glass desktop mock</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:2560px;height:1080px;overflow:hidden;font-family:var(--font-family),sans-serif;font-size:13px;color:var(--dark-text);background:#000 url(wallpaper.jpg) center/cover}
+.label{position:absolute;left:40px;top:70px;font-size:15px;font-weight:600;color:#fff;background:rgba(0,0,0,.45);padding:6px 14px;border-radius:999px;backdrop-filter:blur(20px)}
+/* shell */
+.bar{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:1500px;height:37px;border-radius:19px;background:var(--glass-tint);backdrop-filter:blur(28px) brightness(.55);border:1px solid var(--glass-rim);display:flex;align-items:center;padding:0 22px;gap:14px;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.bar .clock{position:absolute;left:50%;transform:translateX(-50%);font-weight:700;font-size:15px}
+.bar .sp{flex:1}.dim{color:var(--dark-textDim)}
+.dock{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);height:60px;border-radius:20px;background:var(--glass-tint);backdrop-filter:blur(28px) brightness(.55);border:1px solid var(--glass-rim);display:flex;align-items:center;padding:0 14px;gap:14px;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.dock i{width:46px;height:46px;border-radius:12px;display:block;box-shadow:0 0 26px 4px var(--c)}
+/* window */
+.win{position:absolute;border-radius:var(--radius-window);background:var(--dark-window);box-shadow:var(--dark-shadow);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--dark-borderStrong)}
+.tb{height:var(--spacing-titlebarHeight);display:flex;align-items:center;padding:0 12px;gap:8px;background:var(--dark-header);border-bottom:1px solid var(--dark-separator);flex:none}
+.tb .title{flex:1;text-align:center;font-weight:600;font-size:13px}
+.wb{display:flex;gap:var(--decoration-buttonGap)}.wb b{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.16);display:block}.wb b:first-child{background:rgba(255,255,255,.34)}
+.body{flex:1;display:flex;min-height:0}
+.side{width:var(--spacing-sidebarWidth);background:var(--dark-sidebar);border-right:1px solid var(--dark-separator);padding:10px 8px;display:flex;flex-direction:column;gap:2px;flex:none}
+.side h6{font-size:11px;font-weight:600;color:var(--dark-textDim);padding:10px 10px 4px;text-transform:uppercase;letter-spacing:.04em}
+.row{height:var(--spacing-rowHeight);border-radius:var(--radius-control);display:flex;align-items:center;gap:10px;padding:0 10px}
+.row.sel{background:var(--dark-selected)}.row:hover{background:var(--dark-hover)}
+.ic{width:16px;height:16px;border-radius:4px;background:var(--dark-textDim);opacity:.8;flex:none}
+.view{flex:1;background:var(--dark-view);padding:16px;overflow:hidden}
+.tool{height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--dark-separator);background:var(--dark-window);flex:none}
+.btn{height:var(--spacing-controlHeight);padding:0 14px;border-radius:var(--radius-control);background:rgba(255,255,255,.07);border:1px solid var(--dark-border);display:inline-flex;align-items:center;gap:8px;font-size:13px}
+.btn.pri{background:var(--dark-accent);color:var(--dark-accentText);border-color:transparent;font-weight:600}
+.btn.flat{background:transparent;border-color:transparent}
+.field{height:var(--spacing-controlHeight);border-radius:var(--radius-control);background:rgba(0,0,0,.28);border:1px solid var(--dark-border);padding:0 12px;display:flex;align-items:center;color:var(--dark-textDim);flex:1}
+.crumb{display:flex;gap:6px;align-items:center;flex:1}.crumb span{padding:5px 10px;border-radius:999px}.crumb span:last-child{background:var(--dark-selected)}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.file{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px;border-radius:var(--radius-card)}
+.file.sel{background:var(--dark-selected);outline:1px solid var(--dark-borderStrong)}
+.fold{width:64px;height:50px;border-radius:8px;background:linear-gradient(#4aa3f0,#1d6fd0);position:relative}.fold:before{content:"";position:absolute;left:0;top:-7px;width:26px;height:10px;border-radius:5px 5px 0 0;background:#4aa3f0}
+.doc{width:46px;height:58px;border-radius:6px;background:linear-gradient(#e9ebee,#c9cdd2)}
+.status{height:30px;display:flex;align-items:center;padding:0 14px;color:var(--dark-textDim);font-size:12px;border-top:1px solid var(--dark-separator);background:var(--dark-window);flex:none}
+.card{background:var(--dark-card);border:1px solid var(--dark-border);border-radius:var(--radius-card);padding:4px 14px;margin-bottom:14px}
+.set{display:flex;align-items:center;height:46px;border-bottom:1px solid var(--dark-separator)}.set:last-child{border:0}.set span{flex:1}
+.sw{width:40px;height:22px;border-radius:999px;background:rgba(255,255,255,.14);position:relative}.sw:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.on{background:var(--dark-accent)}.sw.on:after{left:21px;background:var(--dark-accentText)}
+.slider{width:180px;height:6px;border-radius:3px;background:rgba(255,255,255,.16);position:relative}.slider:before{content:"";position:absolute;left:0;top:0;height:6px;width:62%;border-radius:3px;background:var(--dark-accent)}.slider:after{content:"";position:absolute;left:62%;top:-6px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.combo{height:var(--spacing-controlHeightSmall);padding:0 12px;border-radius:var(--radius-control);background:rgba(255,255,255,.07);border:1px solid var(--dark-border);display:flex;align-items:center;gap:10px}
+h2{font-size:20px;font-weight:700;margin:4px 0 14px}h3{font-size:12px;color:var(--dark-textDim);font-weight:600;margin:0 0 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.tabs{display:flex;gap:4px;background:rgba(0,0,0,.25);padding:3px;border-radius:999px}.tabs span{padding:5px 14px;border-radius:999px}.tabs .on{background:var(--dark-selected)}
+.dlg{width:420px;padding:22px;gap:14px;border-radius:var(--radius-popup)}.dlg p{color:var(--dark-textDim);line-height:1.45}.dlg .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+/* variant B: frosted chrome */
+body.b .win{background:transparent}
+body.b .tb,body.b .side,body.b .tool,body.b .status{background:var(--glass-tintApp);backdrop-filter:blur(var(--glass-blur)) saturate(1.3)}
+body.b .dlg{background:var(--glass-tintApp);backdrop-filter:blur(var(--glass-blur)) saturate(1.3)}
+</style></head><body>
+<div class="label" id="lab"></div>
+<div class="bar"><span>▣</span><span>▾</span><span class="dim">Dolphin — Home</span><span class="clock">11:24 AM</span><span class="sp"></span><span>♫ Now playing</span><span>⚙</span></div>
+
+<div class="win" style="left:60px;top:130px;width:960px;height:640px">
+ <div class="tb"><div class="wb" style="visibility:hidden"><b></b><b></b><b></b></div><div class="title">Home — Dolphin</div><div class="wb"><b></b><b></b><b></b></div></div>
+ <div class="tool"><span class="btn flat">‹</span><span class="btn flat">›</span><div class="crumb"><span>Home</span>›<span>Pictures</span>›<span>Wallpapers</span></div><div class="tabs"><span class="on">Icons</span><span>List</span></div><span class="btn flat">⌕</span></div>
+ <div class="body"><div class="side"><h6>Places</h6><div class="row sel"><i class="ic"></i>Home</div><div class="row"><i class="ic"></i>Desktop</div><div class="row"><i class="ic"></i>Documents</div><div class="row"><i class="ic"></i>Downloads</div><div class="row"><i class="ic"></i>Pictures</div><h6>Devices</h6><div class="row"><i class="ic"></i>Root · 2.9 TB</div><div class="row"><i class="ic"></i>CachyOS</div></div>
+ <div class="view"><div class="grid"><div class="file"><div class="fold"></div>Desktop</div><div class="file sel"><div class="fold"></div>Dev</div><div class="file"><div class="fold"></div>Documents</div><div class="file"><div class="fold"></div>Downloads</div><div class="file"><div class="fold"></div>Games</div><div class="file"><div class="fold"></div>Pictures</div><div class="file"><div class="doc"></div>notes.md</div><div class="file"><div class="doc"></div>specs.pdf</div><div class="file"><div class="fold"></div>Videos</div></div></div></div>
+ <div class="status">9 items · 1 selected · 1.2 TB free</div></div>
+
+<div class="win" style="left:1080px;top:110px;width:900px;height:620px">
+ <div class="tb"><div class="wb" style="visibility:hidden"><b></b><b></b><b></b></div><div class="title">Appearance — System Settings</div><div class="wb"><b></b><b></b><b></b></div></div>
+ <div class="body"><div class="side"><div class="field" style="flex:none;margin-bottom:6px">Search…</div><h6>Appearance</h6><div class="row sel"><i class="ic"></i>Colours &amp; Glass</div><div class="row"><i class="ic"></i>Wallpaper</div><div class="row"><i class="ic"></i>Dock &amp; Bar</div><h6>System</h6><div class="row"><i class="ic"></i>Display</div><div class="row"><i class="ic"></i>Sound</div><div class="row"><i class="ic"></i>Network</div><div class="row"><i class="ic"></i>Power</div></div>
+ <div class="view"><h2>Colours &amp; Glass</h2><h3>Look</h3><div class="card"><div class="set"><span>Appearance</span><div class="tabs"><span>Light</span><span class="on">Dark</span><span>Auto</span></div></div><div class="set"><span>Accent</span><div class="combo">Monochrome ▾</div></div><div class="set"><span>Icon colour haze</span><div class="slider"></div></div></div>
+ <h3>Motion</h3><div class="card"><div class="set"><span>Bounce</span><div class="sw on"></div></div><div class="set"><span>Bars dodge windows</span><div class="sw on"></div></div><div class="set"><span>Reduce transparency</span><div class="sw"></div></div></div>
+ <div style="display:flex;justify-content:flex-end;gap:8px"><span class="btn">Defaults</span><span class="btn pri">Apply</span></div></div></div></div>
+
+<div class="win" style="left:2030px;top:150px;width:480px;height:520px">
+ <div class="tb"><span class="btn flat" style="height:28px">☰</span><div class="title">Text Editor <span class="dim" style="font-weight:400">· GTK 4</span></div><div class="wb"><b></b><b></b><b></b></div></div>
+ <div class="view" style="font-family:var(--font-mono),monospace;line-height:1.7;color:var(--dark-textDim)"><span style="color:var(--dark-text)"># One design, five toolkits</span><br>Qt · KWin decoration · GTK 3<br>GTK 4 / libadwaita · shell<br><br>All generated from<br><span style="color:var(--dark-text)">design/tokens.json</span></div>
+ <div class="status">Markdown · Ln 6, Col 19</div></div>
+
+<div class="win dlg" style="left:1290px;top:770px"><b style="font-size:15px">Close window?</b><p>The running process will be ended and unsaved work is lost.</p><div class="acts"><span class="btn">Cancel</span><span class="btn pri">Close</span></div></div>
+
+<div class="dock"><i style="--c:rgba(255,255,255,.18);background:#2b2e31"></i><i style="--c:rgba(255,130,40,.35);background:linear-gradient(135deg,#ff9a3c,#c63bd8)"></i><i style="--c:rgba(60,140,240,.35);background:linear-gradient(#4aa3f0,#1d6fd0)"></i><i style="--c:rgba(255,255,255,.12);background:#3a3d41"></i><i style="--c:rgba(40,90,190,.4);background:#1b4f9c"></i><i style="--c:rgba(88,101,242,.45);background:#5865f2"></i></div>
+<script>const v=new URLSearchParams(location.search).get("v")||"a";document.body.className=v;document.getElementById("lab").textContent=v==="a"?"A · solid app surfaces, glass only in the shell":"B · frosted title bars, sidebars and dialogs";</script>
+</body></html>

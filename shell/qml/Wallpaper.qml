@@ -1,0 +1,42 @@
+// The shell's own wallpaper: a full-screen surface on the background layer. While plasmashell still runs, its desktop
+// window covers this one, so nothing changes; once plasmashell is not started, this is the wallpaper. The picture is the
+// config key "wallpaper" (Sirca Settings > Desktop); until that is set, whatever Plasma shows now. Changes cross-fade.
+import QtQuick
+import SircaShell
+
+Window {
+    id: wp
+    color: "#05060f"
+    flags: Qt.FramelessWindowHint
+    width: Screen.width; height: Screen.height
+    // NEVER visible before the layer is set: a window that maps first is an ordinary full-screen toplevel (it covered the
+    // desktop on 2026-09-19). `ready` flips only after Shell.setupWallpaper().
+    property bool ready: false
+    visible: ready && (Config.ownWallpaper === true || (Config.ownWallpaper === "auto" && !Shell.plasmaRunning))
+    title: "Sirca Shell — wallpaper"
+    readonly property string path: Config.wallpaper !== "" ? Config.wallpaper : Shell.plasmaWallpaper()
+    property bool useA: true
+    // The new picture loads in the hidden layer; its Ready flips the layers. Going back to the picture the hidden layer
+    // ALREADY holds (dark -> light -> dark) changes nothing in it, so no Ready ever comes: flip at once in that case.
+    onPathChanged: { const u = toUrl(path), back = useA ? b : a
+        if (String(back.source) === u && back.status === Image.Ready) { useA = !useA; return }
+        back.source = u }
+    function toUrl(p) { return p === "" ? "" : "file://" + p }
+    // With plasmashell still running, its desktop window is in the same layer as ours and whichever mapped LAST is on top.
+    // When plasmashell (re)starts, ours is mapped again a moment later so it stays the desktop you click on.
+    Connections { target: Shell; function onPlasmaRunningChanged() { if (Shell.plasmaRunning && Config.ownWallpaper === true) remap.restart() } }
+    Timer { id: remap; interval: 3500; onTriggered: { wp.ready = false; remapShow.restart() } }
+    Timer { id: remapShow; interval: 120; onTriggered: wp.ready = true }
+    signal menuRequested(real x, real y)
+    signal pressedAnywhere()
+    Component.onCompleted: { Shell.setupWallpaper(wp, true); a.source = toUrl(path); ready = true }
+    component Pic: Image { anchors.fill: parent; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false; smooth: true; mipmap: true
+        sourceSize: Qt.size(wp.width, wp.height) }
+    Pic { id: a; opacity: wp.useA ? 1 : 0; Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } } }
+    Pic { id: b; opacity: wp.useA ? 0 : 1; Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
+        onStatusChanged: if (status === Image.Ready && source != "" && wp.useA) wp.useA = false }
+    // the desktop itself: right click = the desktop menu, any press closes what the shell has open
+    MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        onPressed: m => { wp.pressedAnywhere(); if (m.button === Qt.RightButton) wp.menuRequested(m.x, m.y) } }
+    Connections { target: a; function onStatusChanged() { if (a.status === Image.Ready && a.source != "" && !wp.useA && String(a.source) === wp.toUrl(wp.path)) wp.useA = true } }
+}

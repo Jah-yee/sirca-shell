@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Description": "Window decoration of the Glass desktop (fork of Darkly): frosted title bar, round monochrome buttons",
+        "EnabledByDefault": true,
+        "Name": "Glass",
+        "Id": "org.kde.glass17"
+    },
+    "X-KDE-ConfigModule": "kcm_darklydecoration",
+    "org.kde.kdecoration3": {
+        "blur": true,
+        "recommendedBorderSize": "None"
+    }
+}

@@ -1,0 +1,212 @@
+/* Glass Desktop for Spotify (Spicetify theme "Glass").
+   Colours come from color.ini (tools/gen_spotify.py: design/tokens.json + the current accent). This file is the DESIGN:
+   the desktop's type, radii, hairlines, control fills and floating "island" surfaces, as in Sirca Shell's bar and dock.
+   The window is translucent as a whole (KWin, blur behind from the glass effect), so depth is made with colour:
+   window = chrome, panels = content, controls = a fill of the text colour. */
+:root {
+  --g-r-panel: 22px; --g-r-card: 12px; --g-r-ctl: 8px; --g-gap: 10px;
+  --g-line: rgba(var(--spice-rgb-text), 0.08); --g-line-strong: rgba(var(--spice-rgb-text), 0.14);
+  --g-fill: rgba(var(--spice-rgb-text), 0.06); --g-fill-hover: rgba(var(--spice-rgb-text), 0.10); --g-fill-press: rgba(var(--spice-rgb-text), 0.16);
+  /* the sheen colour comes from color.ini ("glass-sheen"): white on dark glass, the surface colour itself on light glass
+     (white on near-white pushed those pixels off the Glass Key colour: an opaque block at the top of every panel) */
+  --g-sheen: linear-gradient(to bottom, rgba(var(--spice-rgb-glass-sheen), 0.055), rgba(var(--spice-rgb-glass-sheen), 0) 90px);
+  --g-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --encore-title-font-stack: "Inter", "Noto Sans", sans-serif; --encore-body-font-stack: "Inter", "Noto Sans", sans-serif;
+  --encore-variable-font-stack: "Inter", "Noto Sans", sans-serif; --font-family: "Inter", "Noto Sans", sans-serif;
+}
+/* Spotify's own design tokens ("encore"), pointed at the theme's colours. Spicetify fills them with fixed values from
+   color.ini; as references they follow the light scheme too (edge fades, skeletons, elevated surfaces, subdued text). */
+.encore-dark-theme, .encore-dark-theme .encore-base-set, .encore-dark-theme .encore-layout-themes, .encore-light-theme, .encore-light-theme .encore-base-set {
+  --background-base: var(--spice-main) !important; --background-highlight: var(--spice-highlight) !important; --background-press: var(--spice-highlight-elevated) !important;
+  --background-elevated-base: var(--spice-main-elevated) !important; --background-elevated-highlight: var(--spice-highlight-elevated) !important; --background-elevated-press: var(--spice-highlight) !important;
+  --background-tinted-base: rgba(var(--spice-rgb-text), 0.07) !important; --background-tinted-highlight: rgba(var(--spice-rgb-text), 0.10) !important; --background-tinted-press: rgba(var(--spice-rgb-text), 0.16) !important;
+  --text-base: var(--spice-text) !important; --text-subdued: var(--spice-subtext) !important; --essential-base: var(--spice-text) !important; --essential-subdued: var(--spice-misc) !important;
+  --decorative-base: var(--spice-text) !important; --decorative-subdued: var(--spice-card) !important; }
+*, body, button, input { font-family: "Inter", "Noto Sans", sans-serif !important; letter-spacing: -0.006em; }
+
+/* ---- the window: chrome colour, a little more air between the islands ---- */
+body, #main, .Root, .Root__top-container { background-color: var(--spice-sidebar) !important; }
+.Root__top-container { gap: var(--g-gap) !important; padding: 0 var(--g-gap) var(--g-gap) !important; }
+
+/* ---- panels: content islands (popup radius, hairline, a sheen from the top) ---- */
+.Root__main-view, .Root__nav-bar, .Root__nav-bar nav, .main-yourLibraryX-entryPoints, .Root__right-sidebar > *, .Root__right-sidebar-overlay, .Root__right-sidebar-peek {
+  border-radius: var(--g-r-panel) !important; }
+.Root__nav-bar { background: transparent !important; }
+.Root__main-view, .main-yourLibraryX-entryPoints, .Root__right-sidebar > * {
+  background-color: var(--spice-main) !important; background-image: var(--g-sheen) !important; background-repeat: no-repeat !important;
+  box-shadow: inset 0 0 0 1px var(--g-line) !important; overflow: hidden; }
+.main-yourLibraryX-libraryContainer, .Root__right-sidebar-overlay, aside.NowPlayingView { background: transparent !important; }
+
+/* the collapsed now-playing strip on the right: an island too, not a dark slab */
+.Root__right-sidebar-peek, .Root__right-sidebar-overlay { background-color: var(--spice-main) !important; box-shadow: inset 0 0 0 1px var(--g-line) !important; }
+.Root__right-sidebar-overlay button:hover { background: var(--g-fill-hover) !important; }
+
+/* ---- top bar: one island for home + search, like the bar's groups ---- */
+.Root__globalNav { background: transparent !important; height: 60px !important; }
+.main-globalNav-searchContainer { background: var(--g-fill) !important; border-radius: 999px !important; box-shadow: inset 0 0 0 1px var(--g-line) !important; height: 42px !important; align-items: center; padding: 0 4px; gap: 0 !important; }
+.main-globalNav-searchContainer > button { background: transparent !important; width: 36px !important; height: 36px !important; min-block-size: 36px !important; }
+.main-globalNav-searchContainer > button:hover { background: var(--g-fill-hover) !important; }
+.main-globalNav-searchInputContainer input, .main-globalNav-searchInputContainer { background: transparent !important; box-shadow: none !important; border: 0 !important; height: 36px !important; min-height: 36px !important; }
+.main-globalNav-searchInputContainer input { font-size: 14px !important; }
+.main-globalNav-searchInputContainer input:focus { box-shadow: none !important; }
+.main-globalNav-searchContainer:focus-within { box-shadow: inset 0 0 0 1.5px var(--spice-button) !important; }
+.main-globalNav-historyButtons button, .main-actionButtons button, .main-topBar-topbarContentRight > button { border-radius: 999px !important; transition: background-color 120ms var(--g-ease); }
+.main-globalNav-historyButtons button:hover, .main-actionButtons button:hover { background: var(--g-fill-hover) !important; }
+[data-testid="user-widget-link"] { background: var(--g-fill) !important; box-shadow: inset 0 0 0 1px var(--g-line) !important; width: 40px !important; height: 40px !important; min-block-size: 40px !important; }
+[data-testid="user-widget-link"] figure, [data-testid="user-widget-link"] img { border-radius: 999px !important; }
+
+/* ---- home ---- */
+[data-testid="home-ads-container"] { display: none !important; }                       /* the promo banner above the shortcuts */
+.main-home-homeHeader, .main-home-filterChipsSection { background: transparent !important; background-image: none !important; }
+/* Spotify washes page headers in the cover's colour. The desktop is monochrome with one accent: keep a breath of it */
+.main-entityHeader-backgroundColor, .main-actionBarBackground-background { opacity: 0.22 !important; filter: saturate(0.55); }
+.main-entityHeader-backgroundColor.main-entityHeader-overlay { background-image: linear-gradient(rgba(var(--spice-rgb-main), 0) 0%, rgba(var(--spice-rgb-main), 0.55) 100%) !important; opacity: 1 !important; filter: none; }
+.main-actionBarBackground-background { background-image: linear-gradient(rgba(var(--spice-rgb-main), 0.6) 0%, var(--spice-main) 100%) !important; }
+.main-entityHeader-metaData, .main-entityHeader-metaData span, .main-entityHeader-subtitle, .main-entityHeader-detailsText { color: var(--spice-subtext) !important; }
+.main-entityHeader-title h1, .main-entityHeader-title { letter-spacing: -0.035em !important; }
+.search-searchCategory-carouselButton, [class*="carouselButton"] { background: var(--spice-card) !important; color: var(--spice-text) !important; box-shadow: inset 0 0 0 1px var(--g-line-strong), 0 4px 12px rgba(0,0,0,0.3) !important; border-radius: 999px !important; }
+[class*="carouselButton"] svg { fill: var(--spice-text) !important; }
+.main-home-filterChipsContainer { padding-top: 6px; }
+/* chips: the desktop's pills (selected = the accent, not a white blob). Spotify's component classes carry a build number
+   ("e-10451-legacy-chip__inner"), so they are matched by their stable part. */
+[class*="legacy-chip__inner"], [class*="ChipInner"] { background: var(--g-fill) !important; box-shadow: inset 0 0 0 1px var(--g-line) !important; color: var(--spice-text) !important;
+  border-radius: 999px !important; font-weight: 500 !important; transition: background-color 120ms var(--g-ease); }
+[class*="legacy-chip__inner"]:hover, [class*="ChipInner"]:hover { background: var(--g-fill-hover) !important; }
+[class*="legacy-chip__inner--selected"], [aria-checked="true"] > [class*="legacy-chip__inner"], [aria-checked="true"] [class*="ChipInner"] { background: var(--spice-button) !important; color: #fff !important; box-shadow: none !important; }
+/* the chips row sticks to the top while scrolling: frosted chrome instead of a black veil */
+.main-home-filterChipsSection::after { background: rgba(var(--spice-rgb-main), 0.78) !important; backdrop-filter: blur(18px) saturate(1.2); border-bottom: 1px solid var(--g-line); }
+/* carousels fade out at their edges with a hard-coded near-black: use the panel colour (light mode showed a dark smear) */
+.search-searchCategory-contentArea::before { background-image: linear-gradient(90deg, rgba(var(--spice-rgb-main), 0.85) 0%, rgba(var(--spice-rgb-main), 0) 100%) !important; }
+.search-searchCategory-contentArea::after { background-image: linear-gradient(-90deg, rgba(var(--spice-rgb-main), 0.85) 0%, rgba(var(--spice-rgb-main), 0) 100%) !important; }
+/* shortcut tiles */
+.view-homeShortcutsGrid-grid { gap: 10px !important; row-gap: 10px !important; grid-auto-rows: 56px !important; --row-gap: 10px; --column-gap: 10px; }
+.view-homeShortcutsGrid-shortcut { margin: 0 !important; }
+.view-homeShortcutsGrid-shortcut { background: var(--g-fill) !important; border-radius: var(--g-r-card) !important; box-shadow: inset 0 0 0 1px var(--g-line) !important; overflow: hidden; height: 56px !important; transition: background-color 120ms var(--g-ease), transform 220ms var(--g-ease); }
+.view-homeShortcutsGrid-shortcut:hover { background: var(--g-fill-hover) !important; }
+.view-homeShortcutsGrid-imageContainer, .view-homeShortcutsGrid-imageWrapper, .view-homeShortcutsGrid-imageWrapper img { width: 56px !important; height: 56px !important; border-radius: 0 !important; box-shadow: none !important; }
+.view-homeShortcutsGrid-name { font-weight: 600 !important; font-size: 13.5px !important; }
+/* shelves */
+.main-shelf-title, h2.encore-text-title-small { font-size: 19px !important; font-weight: 650 !important; letter-spacing: -0.015em !important; }
+.encore-text-title-medium, .encore-text-title-large, h1 { font-weight: 700 !important; letter-spacing: -0.025em !important; }
+.main-card-cardContainer, .main-card-card { border-radius: var(--g-r-card) !important; background: transparent !important; transition: background-color 160ms var(--g-ease); }
+.main-card-cardContainer:hover, .main-card-card:hover { background: var(--g-fill) !important; }
+.main-cardImage-imageWrapper, .main-cardImage-image, .main-image-image, .cover-art, .cover-art img, .main-entityHeader-image { border-radius: 10px !important; }
+.main-cardImage-imageWrapper { box-shadow: 0 2px 8px rgba(0,0,0,0.16) !important; }   /* tight: a wide shadow is a grey halo through glass */
+.main-cardImage-circular, .main-cardImage-circular img { border-radius: 999px !important; }
+.main-card-cardTitleLink, .main-cardHeader-text { font-weight: 600 !important; font-size: 14px !important; }
+
+/* ---- play buttons: the accent, white glyph. No coloured glow: on glass, Glass Key cannot un-mix a coloured halo (it
+   showed as a ring around the button) ---- */
+.main-playButton-PlayButton > button > span, .view-homeShortcutsGrid-playButton, [data-testid="play-button"] > span, .main-playButton-primary > span { background-color: var(--spice-button) !important; color: #fff !important; box-shadow: none !important; }
+.main-playButton-PlayButton svg, .view-homeShortcutsGrid-playButton svg, [data-testid="play-button"] svg { fill: #fff !important; color: #fff !important; }
+
+/* ---- track lists ---- */
+.main-trackList-trackListRow { border-radius: var(--g-r-ctl) !important; transition: background-color 100ms var(--g-ease); }
+.main-trackList-trackListRow:hover, .main-trackList-trackListRow:focus-within { background: var(--g-fill) !important; }
+.main-trackList-trackListRow.main-trackList-selected, .main-trackList-trackListRow.main-trackList-selected:hover, .main-trackList-trackListRow[aria-selected="true"] { background: var(--g-fill-press) !important; background-color: var(--g-fill-press) !important; --background-tinted-highlight: transparent; }
+.main-trackList-active .main-trackList-rowTitle, .main-trackList-playingIcon, .main-trackList-active .main-trackList-number { color: var(--spice-button-active) !important; }
+.main-trackList-trackListHeaderRow { border-bottom: 1px solid var(--g-line) !important; }
+.main-trackList-rowImage { border-radius: 6px !important; }
+
+/* ---- the library rail ---- */
+/* Spotify gives every library picture a 60 px black glow. Stacked down the rail they add up to a grey slab, and through
+   glass that slab is what you see (in light mode the rail turned grey below its header). A small, tight shadow instead. */
+.x-entityImage-imageContainer { box-shadow: 0 2px 6px rgba(0,0,0,0.14) !important; }
+.main-yourLibraryX-listItem .x-entityImage-imageContainer, .main-yourLibraryX-listItem img, .x-entityImage-imagePlaceholder { border-radius: 10px !important; }
+.main-yourLibraryX-listItemGroup, .main-yourLibraryX-listItem > div { border-radius: var(--g-r-card) !important; }
+.main-yourLibraryX-listItem [role="button"]:hover, .main-yourLibraryX-listItem > div:hover { background: var(--g-fill-hover) !important; }
+.main-yourLibraryX-header button, .main-yourLibraryX-collapseButton button { border-radius: 999px !important; }
+.main-yourLibraryX-header button:hover { background: var(--g-fill-hover) !important; }
+
+/* ---- the player: a floating island like the dock ---- */
+.Root__now-playing-bar { background: transparent !important; border: 0 !important; }
+.main-nowPlayingBar-container { background-color: var(--spice-main) !important; background-image: var(--g-sheen) !important; border: 0 !important; border-radius: var(--g-r-panel) !important;
+  box-shadow: inset 0 0 0 1px var(--g-line) !important; margin: 0 !important; }
+.main-nowPlayingBar-nowPlayingBar { height: 72px !important; padding: 0 14px !important; }
+[data-testid="control-button-playpause"] { background: var(--spice-button) !important; color: #fff !important; width: 36px !important; height: 36px !important; min-block-size: 36px !important; border-radius: 999px !important; box-shadow: none !important; }
+[data-testid="control-button-playpause"] { display: flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; }
+[data-testid="control-button-playpause"] > span { background: transparent !important; width: 100% !important; height: 100% !important; min-block-size: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; transform: none !important; }
+[data-testid="control-button-playpause"] span { background: transparent !important; }
+[data-testid="control-button-playpause"] svg { fill: #fff !important; color: #fff !important; }
+.player-controls__buttons button:not([data-testid="control-button-playpause"]):hover, .main-nowPlayingBar-extraControls button:hover { background: var(--g-fill-hover) !important; border-radius: 999px; }
+.player-controls__buttons { gap: 6px !important; margin-bottom: 6px !important; }
+.playback-bar, .volume-bar, .playback-progressbar { --fg-color: var(--spice-button) !important; --bg-color: var(--g-fill-press) !important; --is-active-fg-color: var(--spice-button-active) !important; }
+.x-progressBar-progressBarBg, .x-progressBar-fillColor, .x-progressBar-sliderArea { border-radius: 999px !important; }
+.playback-bar__progress-time-elapsed, .main-playbackBarRemainingTime-container { font-variant-numeric: tabular-nums; font-size: 11px !important; color: var(--spice-subtext) !important; }
+.main-nowPlayingWidget-coverArt .cover-art, .main-nowPlayingWidget-coverArt img { border-radius: 10px !important; }
+.main-trackInfo-name, .main-trackInfo-name a { font-weight: 600 !important; }
+
+/* ---- menus, tooltips, dialogs: the desktop's popups ---- */
+.main-contextMenu-menu, [class*="contextMenu"] ul[role="menu"] { background-color: var(--spice-card) !important; border-radius: 14px !important; padding: 6px !important; box-shadow: 0 16px 40px rgba(0,0,0,0.36), inset 0 0 0 1px var(--g-line-strong) !important; }
+.main-contextMenu-menuItemButton { border-radius: var(--g-r-ctl) !important; padding: 8px 10px !important; font-size: 13.5px !important; }
+.main-contextMenu-menuItemButton:hover, .main-contextMenu-menuItemButton:focus { background: var(--g-fill-hover) !important; }
+.main-contextMenu-dividerAfter::after, .main-contextMenu-dividerBefore::before { border-color: var(--g-line) !important; }
+.main-contextMenu-tippy, [data-tippy-root] [role="tooltip"], .encore-tooltip { background: var(--spice-card) !important; color: var(--spice-text) !important; border-radius: 8px !important; box-shadow: 0 8px 22px rgba(0,0,0,0.32), inset 0 0 0 1px var(--g-line-strong) !important; font-size: 12px !important; }
+.GenericModal, .main-trackCreditsModal-container, [class*="Modal"] > [role="dialog"], .encore-over-media-set [role="dialog"] { border-radius: var(--g-r-panel) !important; background-color: var(--spice-card) !important; box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 0 0 1px var(--g-line-strong) !important; }
+.GenericModal__overlay, .main-modal-overlay { background: rgba(0,0,0,0.35) !important; backdrop-filter: blur(14px); }
+
+/* ---- buttons and inputs elsewhere ---- */
+button[class*="Button-"][class*="primary"] span, .encore-bright-accent-set { border-radius: 999px !important; }
+input[type="text"], input[type="search"], textarea, select { border-radius: var(--g-r-ctl) !important; }
+.x-toggle-indicatorWrapper { border-radius: 999px !important; } input:checked ~ .x-toggle-indicatorWrapper { background-color: var(--spice-button) !important; }
+
+/* ---- scrollbars: slim, only a thumb ---- */
+.os-scrollbar-handle, ::-webkit-scrollbar-thumb { border-radius: 999px !important; background-color: rgba(var(--spice-rgb-text), 0.20) !important; }
+.os-scrollbar-vertical { width: 8px !important; padding: 2px !important; } ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: transparent; }
+
+/* ======== MINI PLAYER ========
+   Spotify's main window cannot be made smaller than 800x600 (enforced by the app itself, not by the window manager), so the
+   widget is Spotify's own Miniplayer window (the button at the right of the player bar). It is a separate document that the
+   theme does not reach by itself: glass-live.js copies colors.css + this file into it and marks its root "glass-pip".
+   Spotify's classes in there are hashed, so everything hangs on the stable test ids. Layout: cover, title + artist, then
+   the transport ALWAYS visible and large (stock: only on hover, over the cover). */
+/* The Miniplayer window has no title bar (KWin rule): it rounds its own corners. The page is pure magenta, which the Glass
+   Key effect treats as a hole; the rounded root sits on it. (Without the effect: set --glass-pip-page to a normal colour.) */
+html.glass-pip, html.glass-pip body { background: var(--glass-pip-page, #ff00ff) !important; margin: 0; height: 100%; overflow: hidden; }
+/* The window keeps its DECORATION with the title bar hidden (a Darkly exception): the decoration casts the window shadow.
+   It draws NO edge line for such windows (glass17): Chromium clips a picture-in-picture window's contents with its own
+   corner radius (about 22 px), which the decoration's line (its own, smaller radius) could never meet. The widget draws
+   its own rim instead, on a radius a little LARGER than Chromium's clip, so rim and surface end on the same curve. */
+html.glass-pip body > div[class*="encore-"] { border-radius: var(--glass-pip-radius, 24px) !important; overflow: hidden !important; box-shadow: inset 0 0 0 1px rgba(var(--spice-rgb-text), 0.16), inset 0 1px 0 0 rgba(var(--spice-rgb-text), 0.10) !important; }
+html.glass-pip body > div[class*="encore-"] { background: var(--spice-sidebar) !important; color: var(--spice-text) !important; height: 100vh !important; display: flex !important; flex-direction: column !important; }
+/* the top row = the widget's "title bar", in the language of the desktop's window buttons: a quiet grab pill in the
+   middle, the close button as a small circle at the RIGHT (where the desktop's window buttons are), settings at the left.
+   It overlays nothing: the content starts below it. */
+html.glass-pip body > div { position: relative !important; }
+html.glass-pip body > div > div:first-child { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 32px !important; margin: 0 !important; transform: none !important; z-index: 6; display: block !important; opacity: 1 !important; background: transparent !important; }
+html.glass-pip body > div > div:first-child > * { position: absolute !important; margin: 0 !important; top: 50% !important; transform: translateY(-50%) !important; }
+html.glass-pip body > div > div:first-child > svg { left: 50% !important; transform: translate(-50%, -50%) !important; width: 36px !important; height: 4px !important; border-radius: 999px; background: rgba(var(--spice-rgb-text), 0.22) !important; fill: transparent !important; color: transparent !important; }
+html.glass-pip body > div > div:first-child > svg * { display: none !important; }
+html.glass-pip body > div > div:first-child > button:first-of-type { left: auto !important; right: 14px !important; width: 14px !important; height: 14px !important; border-radius: 999px !important; background: rgba(var(--spice-rgb-text), 0.22) !important; color: transparent !important; transition: background-color 120ms; }
+html.glass-pip body > div > div:first-child > button:first-of-type:hover { background: #e0565b !important; }
+html.glass-pip body > div > div:first-child > button:first-of-type svg { opacity: 0 !important; }
+html.glass-pip body > div > div:first-child > button:last-of-type { left: 12px !important; right: auto !important; width: 20px !important; height: 20px !important; color: rgba(var(--spice-rgb-text), 0.45) !important; background: transparent !important; display: flex !important; align-items: center; justify-content: center; }
+html.glass-pip body > div > div:first-child > button:last-of-type:hover { color: var(--spice-text) !important; }
+html.glass-pip body > div > div:nth-child(2) { flex: 1 1 auto !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; margin: 0 !important; padding: 34px 16px 14px !important; gap: 12px !important; position: relative !important; height: auto !important; box-sizing: border-box !important; }
+html.glass-pip body > div > div:nth-child(2) > * { margin: 0 !important; }                     /* Spotify's own 4 / 8 px margins made left and right unequal */
+/* cover: a rounded square as large as the room allows, no colour slab behind it */
+html.glass-pip [data-testid="pip-hover-element"]::before, html.glass-pip [data-testid="pip-hover-element"]::after, html.glass-pip [data-testid="pip-hover-element"] *::before, html.glass-pip [data-testid="pip-hover-element"] *::after { display: none !important; }
+html.glass-pip [data-testid="pip-hover-element"] { overflow: visible !important; mask-image: none !important; -webkit-mask-image: none !important; order: 1; flex: 1 1 auto !important; min-height: 0 !important; width: 100% !important; height: auto !important; background: transparent !important; border-radius: 0 !important; position: relative !important; inset: auto !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+/* ONE square box, and everything inside it STACKED in that box. On a song change Spotify puts the old and the new picture
+   side by side and slides them (and video tracks add more wrappers): laid out in a row, the cover jumped to the left and
+   was cut off. Stacked, the new picture simply lies on top of the old one. */
+html.glass-pip [data-testid="pip-hover-element"] > * { position: relative !important; flex: 0 0 auto !important; height: 100% !important; width: auto !important; aspect-ratio: 1 / 1 !important; max-width: 100% !important; max-height: 100% !important; margin: 0 !important; padding: 0 !important; transform: none !important; background: transparent !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
+html.glass-pip [data-testid="pip-hover-element"] > * * { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; transform: none !important; translate: none !important; background: transparent !important; background-image: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; mask-image: none !important; -webkit-mask-image: none !important; transition: opacity 200ms !important; animation: none !important; }
+/* overflow: clip, not visible: on an <img>, "visible" switches the rounded clipping OFF (the corners came out square on screen) */
+html.glass-pip [data-testid="pip-hover-element"] img, html.glass-pip [data-testid="pip-hover-element"] video, html.glass-pip [data-testid="pip-hover-element"] canvas { overflow: clip !important; object-fit: cover !important; border-radius: 16px !important; box-shadow: 0 3px 10px rgba(0,0,0,0.2) !important; display: block !important; }
+/* title + artist + liked */
+html.glass-pip [data-testid="pip-hover-element"] + div { order: 2; flex: 0 0 auto !important; width: 100% !important; position: relative !important; inset: auto !important; padding: 0 !important; box-sizing: border-box; }
+html.glass-pip [data-testid="context-item-info-title"], html.glass-pip [data-testid="context-item-info-title"] * { font-size: 16px !important; font-weight: 650 !important; letter-spacing: -0.02em !important; color: var(--spice-text) !important; }
+html.glass-pip [data-testid="context-item-info-subtitles"], html.glass-pip [data-testid="context-item-info-subtitles"] * { font-size: 13px !important; color: var(--spice-subtext) !important; }
+/* transport: always there, under the titles */
+html.glass-pip [data-testid="document-pip-hover-element"] { order: 3; position: static !important; inset: auto !important; width: 100% !important; height: auto !important; opacity: 1 !important; visibility: visible !important; background: none !important; background-image: none !important; flex: 0 0 auto !important; pointer-events: auto !important; }
+html.glass-pip [data-testid="document-pip-hover-element"] > div { position: static !important; height: auto !important; width: 100% !important; display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 0 !important; opacity: 1 !important; }
+html.glass-pip [data-testid="document-pip-hover-element"] button { color: var(--spice-subtext) !important; border-radius: 999px !important; }
+html.glass-pip [data-testid="document-pip-hover-element"] button:hover { color: var(--spice-text) !important; background: var(--g-fill-hover) !important; }
+html.glass-pip [data-testid="control-button-skip-back"] svg, html.glass-pip [data-testid="control-button-skip-forward"] svg { width: 20px !important; height: 20px !important; }
+html.glass-pip [data-testid="control-button-playpause"] { width: 50px !important; height: 50px !important; padding: 0 !important; background: transparent !important; }
+html.glass-pip [class*="text-bright-accent"], html.glass-pip [class*="text-bright-accent"] svg { color: var(--spice-button-active) !important; fill: currentColor !important; }
+html.glass-pip [data-testid="control-button-playpause"] > span { background: var(--spice-button) !important; color: #fff !important; width: 50px !important; height: 50px !important; border-radius: 999px !important; display: flex !important; align-items: center !important; justify-content: center !important; min-block-size: 0 !important; block-size: 50px !important; inline-size: 50px !important; min-inline-size: 50px !important; flex: 0 0 50px !important; padding: 0 !important; }
+html.glass-pip [data-testid="control-button-playpause"] svg { fill: #fff !important; color: #fff !important; }
+html.glass-pip .volume-bar__slider-container { background: var(--spice-card) !important; border-radius: 12px !important; box-shadow: inset 0 0 0 1px var(--g-line-strong) !important; }
+html.glass-pip .playback-progressbar, html.glass-pip .playback-bar { --fg-color: var(--spice-button) !important; --bg-color: var(--g-fill-press) !important; }

@@ -1,0 +1,60 @@
+# openSUSE Tumbleweed
+# Build Darkly from release tag and publish .rpm package
+
+on:
+  workflow_call:
+    inputs:
+      cache-file-path:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: opensuse/tumbleweed:latest
+    steps:
+      - name: Install build dependencies
+        run: |
+          zypper in -y zstd rpm-build cmake gcc-c++ extra-cmake-modules ki18n-devel frameworkintegration-devel kguiaddons-devel \
+            kcmutils-devel kwindowsystem-devel libqt5-qtquick3d-devel kirigami2-devel libKF5I18n5 \
+            kdecoration6-devel kf6-kconfig-devel kf6-kconfigwidgets-devel \
+            kf6-kcoreaddons-devel kf6-frameworkintegration-devel kf6-kcmutils-devel \
+            kf6-kwindowsystem-devel kwayland6-devel libplasma6-devel kf6-kirigami-devel fdupes qt6-quickwidgets-devel qt6-test-devel
+      - uses: actions/cache/restore@v5.0.5
+        id: cache
+        with:
+          key: ${{ runner.os }}-v${{ inputs.version }}-${{ hashFiles(inputs.cache-file-path) }}
+          path: ${{ inputs.cache-file-path }}
+          fail-on-cache-miss: true
+      - name: Extract tarball
+        run: tar xf ${{ inputs.cache-file-path }}
+      - name: Build source
+        run: |
+          cmake_opts=(
+            -B Darkly-${{ inputs.version }}/build
+            -S Darkly-${{ inputs.version }}
+            -DBUILD_RPMS=ON
+          )
+          echo "${cmake_opts[@]}"
+          cmake "${cmake_opts[@]}" && cmake --build Darkly-${{ inputs.version }}/build -j$(nproc) && echo "Build completed!" || echo "Build failed!" || exit 1
+      - name: Build RPM package
+        id: step_build
+        run: |
+          cd Darkly-${{ inputs.version }}/build; cpack -G RPM -V -DCPACK_THREADS=$(nproc)
+          artifact=$GITHUB_WORKSPACE/Darkly-${{ inputs.version }}/packages/darkly-${{ inputs.version }}.x86_64.rpm
+          publish_filename=darkly-${{ inputs.version }}.openSUSE-tumbleweed.x86_64.rpm
+          echo "Moving file to $GITHUB_WORKSPACE/$publish_filename"
+          mv $artifact $GITHUB_WORKSPACE/$publish_filename
+          echo "ARTIFACT=$publish_filename" >> "$GITHUB_ENV"
+          SHA256SUM=$(sha256sum $GITHUB_WORKSPACE/$publish_filename | awk '{ print $1 }')
+          echo "ARTIFACT = $publish_filename | SHA256SUM = $SHA256SUM"
+          echo "SHA256SUM=$SHA256SUM" >> "$GITHUB_ENV"
+      - name: Publish RPM
+        if: ${{ env.SHA256SUM != '' }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ env.ARTIFACT }}
+          retention-days: 1

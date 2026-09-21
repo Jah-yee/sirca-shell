@@ -1,0 +1,20 @@
+{
+  "sircaShellSetup": 1,
+  "config": {
+    "barCenter": [
+      "clock"
+    ],
+    "barLeft": [
+      "desktop",
+      "workspaces",
+      "tray",
+      "title"
+    ],
+    "barRight": [
+      "media",
+      "bell",
+      "gear"
+    ],
+    "dockWidthMode": "fit"
+  }
+}

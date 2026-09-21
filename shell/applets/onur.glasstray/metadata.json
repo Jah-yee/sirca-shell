@@ -1,0 +1,29 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Marco Martin",
+                "Email": "mart@kde.org"
+            },
+            {
+                "Name": "onur (glow fork)"
+            }
+        ],
+        "BugReportUrl": "https://bugs.kde.org/enter_bug.cgi?product=plasmashell&component=System%20Tray%20widget",
+        "Category": "Windows and Tasks",
+        "Description": "Plasma 6.6.6 system tray for Sirca Shell: its popup never opens as a window, the shell adopts the expanded view into a lobe",
+        "EnabledByDefault": true,
+        "FormFactors": [
+            "desktop"
+        ],
+        "Icon": "preferences-desktop-notification",
+        "License": "GPL-2.0+",
+        "Name": "System Tray (Sirca Shell)",
+        "Website": "https://www.kde.org/plasma-desktop",
+        "Id": "onur.glasstray"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-ContainmentType": "CustomEmbedded",
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-RootPath": "onur.systraybase"
+}

@@ -1,0 +1,132 @@
+/* Glass Desktop — Ghostty's in-window dialogs ("Close Window?", "Close Tab?", "Close Split?", unsafe paste, …) and toasts.
+   Same glass as the desktop's popups and the login card: #18191b tint at 62 %, light from above, a hairline rim that is
+   brighter at the top edge, pill buttons, token red for destructive, the navy accent (#4c6ed6) only as the focus ring.
+   Loaded via gtk-custom-css; selectors follow libadwaita 1.9 (_message-dialog.scss / _dialogs.scss).
+   Source of truth: apps/terminal/glass-dialog.css in the glass-desktop repository */
+
+floating-sheet > dimming,
+dialog-host > dialog.alert > dimming {
+  background-color: rgba(2, 3, 10, 0.34);
+}
+
+dialog-host > dialog.alert sheet,
+floating-sheet > sheet {
+  background-color: rgba(24, 25, 27, 0.62);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0) 24%);
+  color: #eff0f1;
+  border-radius: 22px;
+  outline: 1px solid rgba(255, 255, 255, 0.16);
+  outline-offset: -1px;
+  /* top edge catches the light; a wide soft shadow lifts the sheet without a dark halo */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 22px 60px rgba(0, 0, 0, 0.42), 0 3px 10px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(22px);
+}
+
+/* GTK pastes the blurred backdrop with the framebuffer's own alpha, so on a translucent terminal (62 %) a third of
+   the sharp text would still show through a single stage. Stacking the blur on the sheet's inner boxes re-copies the
+   already-blurred result and covers the remainder (residual ≈ 0.38³ ≈ 5 % before the sheet tint). */
+dialog-host > dialog.alert sheet > * {
+  backdrop-filter: blur(14px);
+}
+dialog.alert .message-area,
+dialog.alert .response-area {
+  backdrop-filter: blur(10px);
+}
+
+dialog.alert .message-area {
+  padding: 30px 30px 22px 30px;
+  border-spacing: 10px;
+}
+dialog.alert .message-area .heading,
+dialog.alert .message-area > .heading-bin label {
+  color: #eff0f1;
+  font-family: Inter, sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.1px;
+}
+dialog.alert .message-area > .body {
+  color: rgba(239, 240, 241, 0.66);
+  font-family: Inter, sans-serif;
+  font-size: 13.5px;
+}
+
+/* a hairline between message and buttons, like the separators in the desktop's popups */
+dialog.alert .response-area {
+  padding: 16px 20px 20px 20px;
+  border-spacing: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+dialog.alert .response-area > button {
+  min-height: 38px;
+  padding: 0 18px;
+  background-color: rgba(255, 255, 255, 0.07);
+  background-image: none;
+  color: #eff0f1;
+  font-family: Inter, sans-serif;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  box-shadow: none;
+  text-shadow: none;
+  outline: 0 solid transparent;
+  transition: background-color 120ms ease, border-color 120ms ease, outline-color 160ms ease, box-shadow 160ms ease;
+}
+dialog.alert .response-area > button:hover {
+  background-color: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+dialog.alert .response-area > button:active {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+/* the default answer (Cancel): a step brighter, never accent-filled */
+dialog.alert .response-area > button.suggested-action,
+dialog.alert .response-area > button.default {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+dialog.alert .response-area > button.suggested-action:hover,
+dialog.alert .response-area > button.default:hover {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+/* keyboard focus: the navy accent as a ring with a soft glow, same as the login screen's password field */
+dialog.alert .response-area > button:focus-visible {
+  outline: 1.5px solid rgba(76, 110, 214, 0.95);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px rgba(76, 110, 214, 0.20);
+}
+dialog.alert .response-area > button.destructive-action {
+  background-color: rgba(229, 72, 77, 0.20);
+  border-color: rgba(229, 72, 77, 0.48);
+  color: #ffd7d8;
+}
+dialog.alert .response-area > button.destructive-action:hover {
+  background-color: rgba(229, 72, 77, 0.32);
+  border-color: rgba(229, 72, 77, 0.66);
+}
+dialog.alert .response-area > button.destructive-action:active {
+  background-color: rgba(229, 72, 77, 0.42);
+}
+dialog.alert .response-area > button.destructive-action:focus-visible {
+  outline-color: rgba(229, 72, 77, 0.95);
+  box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.20);
+}
+
+/* toasts ("Copied to clipboard", "Reloaded the configuration"): a glass pill */
+toast {
+  background-color: rgba(24, 25, 27, 0.72);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 60%);
+  color: #eff0f1;
+  border-radius: 999px;
+  outline: 1px solid rgba(255, 255, 255, 0.15);
+  outline-offset: -1px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(18px);
+  font-family: Inter, sans-serif;
+}
+toast button {
+  border-radius: 999px;
+  color: #eff0f1;
+}

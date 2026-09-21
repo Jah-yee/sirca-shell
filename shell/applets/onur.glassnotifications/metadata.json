@@ -1,0 +1,30 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "kde@privat.broulik.de",
+                "Name": "Kai Uwe Broulik"
+            },
+            {
+                "Name": "onur (Sirca Shell cards fork)"
+            }
+        ],
+        "BugReportUrl": "https://bugs.kde.org/enter_bug.cgi?product=plasmashell&component=Notifications",
+        "Category": "Tasks",
+        "Description": "Plasma 6.6.6 notifications for Sirca Shell: popups are cards inside a bar lobe instead of windows",
+        "EnabledByDefault": false,
+        "FormFactors": [
+            "desktop"
+        ],
+        "Icon": "preferences-desktop-notification-bell",
+        "License": "GPL-2.0+",
+        "Name": "Notifications (Sirca Shell)",
+        "Website": "https://kde.org/plasma-desktop/",
+        "Id": "onur.glassnotifications"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-NotificationAreaCategory": "SystemServices",
+    "X-Plasma-RootPath": "onur.glassnotifbase",
+    "KPackageStructure": "Plasma/Applet"
+}

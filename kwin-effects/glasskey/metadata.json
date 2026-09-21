@@ -1,0 +1,10 @@
+{
+    "KPlugin": {
+        "Authors": [ { "Name": "onur" } ],
+        "Category": "Appearance",
+        "Description": "Glass surfaces for apps that cannot paint a transparent window: the app's exact background colours become glass, text and pictures stay solid",
+        "EnabledByDefault": false,
+        "License": "GPL-3.0-or-later",
+        "Name": "Glass Key"
+    }
+}
