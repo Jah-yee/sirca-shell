@@ -43,7 +43,7 @@ head_ "1. Your system"
 FATAL=0; HAVE_EFFECT_DEPS=1
 if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then ok "Wayland session"; else bad "this is not a Wayland session (XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset}). The shell is made of Wayland layer-shell windows: it cannot run on X11."; FATAL=1; fi
 PV="$(plasmashell --version 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' | head -1)"
-case "$PV" in 6.6*) ok "KDE Plasma $PV" ;; 6.7*) warn "KDE Plasma $PV: everything COMPILES against 6.7.5 (tested in a build sandbox), but it has never been run on 6.7. Please report how it goes." ;; 6.*) warn "KDE Plasma $PV: built and used on 6.6. Older 6.x may miss things the shell uses; the KWin effect is version-sensitive." ;;
+case "$PV" in 6.6*) ok "KDE Plasma $PV" ;; 6.7*) warn "KDE Plasma $PV: built and run against 6.7.5 in a headless test session (bar, dock, launcher, quick settings, calendar, power menu, edit mode and both KWin effects came up). Not used day to day on 6.7 yet: please report what you see." ;; 6.*) warn "KDE Plasma $PV: built and used on 6.6. Older 6.x may miss things the shell uses; the KWin effect is version-sensitive." ;;
   "") bad "KDE Plasma was not found. The shell needs KWin and Plasma's libraries (it replaces only Plasma's panels)."; FATAL=1 ;; *) bad "KDE Plasma $PV: Plasma 6 is required."; FATAL=1 ;; esac
 pgrep -x kwin_wayland >/dev/null 2>&1 && ok "KWin is the compositor" || { bad "kwin_wayland is not running. Other compositors (Hyprland, Sway, GNOME) are not supported."; FATAL=1; }
 for t in cmake g++ git python3; do have $t || { bad "missing: $t"; FATAL=1; }; done
