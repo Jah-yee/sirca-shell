@@ -1,4 +1,7 @@
-// Theme icon that glows while `active` — the "this is open" language shared by launcher, tray and gear.
+// Theme icon in the shell's "this is open" language, shared by launcher, show-desktop, bell, gear and the OSD glyph.
+// Dark mode: a white glyph that GLOWS white while `active`.
+// Light mode: a bright WHITE glyph too, lifted off the milky glass by a soft dark shadow underneath (no outline, no
+// colour-themed glow: onur 2026-09-20). Hover and `active` do not change colour, they let the shadow reach a little further.
 import SircaShell
 import QtQuick
 import QtQuick.Effects
@@ -10,13 +13,25 @@ Item {
     property bool active: false
     property bool hovered: false
     property real size: 18
-    property color color: Config.fgSolid
+    property color color: Config.fgSolid          // dark mode's glyph colour (light mode is white by design)
+    // calm: the earlier, quieter light-mode shadow (no growing on hover / open, smaller). The launcher's logo keeps it: a big
+    // glyph with a reaching shadow looked heavy (onur 2026-09-20); the small bar icons use the reaching one.
+    property bool calm: false
     width: size; height: size
-    MultiEffect { z: -1; anchors.fill: icon; source: icon; autoPaddingEnabled: true; blurEnabled: true; blur: 1.0; blurMax: 32; brightness: Config.dark ? 0.5 : 0.1; saturation: Config.dark ? -0.2 : 0.4; colorization: Config.dark ? 0 : 1; colorizationColor: Config.glow; scale: 1.5; transformOrigin: Item.Center
-        // light mode: a faint halo even at rest (a flat dark glyph on milk looked dead next to the glowing white one of dark mode)
-        opacity: root.active ? (Config.dark ? 0.75 : 0.95) : (Config.dark ? 0 : (root.hovered ? 0.45 : 0.20)); Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } } }
-    MultiEffect { z: -1; anchors.fill: icon; source: icon; autoPaddingEnabled: true; blurEnabled: true; blur: 0.8; blurMax: 10; brightness: Config.dark ? 0.5 : 0.1; colorization: Config.dark ? 0 : 1; colorizationColor: Config.glow; scale: 1.12; transformOrigin: Item.Center
-        opacity: root.active ? (Config.dark ? 0.6 : 0.85) : 0; Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } } }
-    Kirigami.Icon { id: icon; anchors.fill: parent; source: root.source; color: root.color; isMask: true; roundToIconSize: false
-        opacity: root.hovered || root.active ? 1 : 0.85; Behavior on opacity { NumberAnimation { duration: 120 } } }
+    // ---- dark: white glow behind the glyph while active
+    MultiEffect { z: -1; visible: Config.dark; anchors.fill: icon; source: icon; autoPaddingEnabled: true; blurEnabled: true; blur: 1.0; blurMax: 32; brightness: 0.5; saturation: -0.2; scale: 1.5; transformOrigin: Item.Center
+        opacity: root.active ? 0.75 : 0; Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } } }
+    MultiEffect { z: -1; visible: Config.dark; anchors.fill: icon; source: icon; autoPaddingEnabled: true; blurEnabled: true; blur: 0.8; blurMax: 10; brightness: 0.5; scale: 1.12; transformOrigin: Item.Center
+        opacity: root.active ? 0.6 : 0; Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } } }
+    // ---- light: the glyph's own shape as a soft dark shadow, a touch lower. It REACHES FURTHER while the pointer is over
+    // the icon and further still while it is open (the gear with quick settings up): the light-mode counterpart of dark
+    // mode's glow. The reach is a scale of the blurred shape, which shows; a larger blur radius alone only got fainter.
+    MultiEffect { id: reach; z: -1; visible: !Config.dark; x: icon.x; y: icon.y + Math.max(1, root.size / (root.calm ? 16 : 14)); width: icon.width; height: icon.height; source: icon; autoPaddingEnabled: true
+        blurEnabled: true; blur: 1.0; blurMax: root.calm ? (root.active ? 16 : (root.hovered ? 12 : 8)) : 12; colorization: 1; colorizationColor: Config.ink; brightness: -1.0; transformOrigin: Item.Center
+        scale: root.calm ? 1.0 : (root.active ? 1.42 : (root.hovered ? 1.22 : 1.10)); Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        opacity: root.calm ? (root.active ? 0.92 : (root.hovered ? 0.84 : 0.74)) : (root.active ? 1.0 : (root.hovered ? 0.88 : 0.78)); Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } } }
+    MultiEffect { z: -1; visible: !Config.dark; x: icon.x; y: icon.y + 0.5; width: icon.width; height: icon.height; source: icon; autoPaddingEnabled: true     // a tight second layer: keeps thin strokes readable
+        blurEnabled: true; blur: 0.7; blurMax: 4; colorization: 1; colorizationColor: Config.ink; brightness: -1.0; opacity: 0.74 }
+    Kirigami.Icon { id: icon; anchors.fill: parent; source: root.source; color: Config.dark ? root.color : "white"; isMask: true; roundToIconSize: false   // literal-ok: white glyphs on light glass, by design
+        opacity: root.hovered || root.active ? 1 : (Config.dark ? 0.85 : 0.96); Behavior on opacity { NumberAnimation { duration: 120 } } }
 }

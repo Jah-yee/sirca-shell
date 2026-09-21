@@ -96,6 +96,8 @@ public:
     inline bool isRightEdge() const;
     inline bool isTopEdge() const;
     inline bool isBottomEdge() const;
+    //* Glass: the corners (GlassCorner bits: 1 top left, 2 top right, 4 bottom right, 8 bottom left) that sit in a corner of the screen
+    inline int squareCorners() const;
 
     inline bool hideTitleBar() const;
     //@}
@@ -225,6 +227,15 @@ bool Decoration::isBottomEdge() const
 {
     return (window()->isMaximizedVertically() || window()->adjacentScreenEdges().testFlag(Qt::BottomEdge))
     && !m_internalSettings->drawBorderOnMaximizedWindows();
+}
+
+// Glass: a corner is square when BOTH of its edges touch the screen's (work area's) edge: KWin reports those for tiled
+// windows (a quarter tile touches two edges, a half tile three). Such a corner fills the corner of the screen instead of
+// leaving a rounded notch of wallpaper. One touching edge alone squares nothing.
+int Decoration::squareCorners() const
+{
+    const bool l = isLeftEdge(), r = isRightEdge(), t = isTopEdge(), b = isBottomEdge();
+    return (t && l ? 1 : 0) | (t && r ? 2 : 0) | (b && r ? 4 : 0) | (b && l ? 8 : 0);
 }
 
 bool Decoration::hideTitleBar() const

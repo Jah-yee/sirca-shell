@@ -23,7 +23,7 @@ add_library(darklydecoration MODULE
     ${darklydecoration_config_PART_FORMS_HEADERS})
 
 set_target_properties(darklydecoration PROPERTIES
-    OUTPUT_NAME org.kde.glass17
+    OUTPUT_NAME org.kde.glass18
 )
 
 target_link_libraries(darklydecoration

@@ -130,6 +130,9 @@ body, #main, .Root, .Root__top-container { background-color: var(--spice-sidebar
 [data-testid="control-button-playpause"] svg { fill: #fff !important; color: #fff !important; }
 .player-controls__buttons button:not([data-testid="control-button-playpause"]):hover, .main-nowPlayingBar-extraControls button:hover { background: var(--g-fill-hover) !important; border-radius: 999px; }
 .player-controls__buttons { gap: 6px !important; margin-bottom: 6px !important; }
+/* every slider (progress, volume, the mini player's volume popup): Spotify sets its own colours ON the .progress-bar element
+   (white, and its brand green while you drag), so they have to be replaced there, not on a parent */
+.progress-bar, html.glass-pip .progress-bar { --fg-color: var(--spice-button) !important; --is-active-fg-color: var(--spice-button-active) !important; --bg-color: rgba(var(--spice-rgb-text), 0.28) !important; }
 .playback-bar, .volume-bar, .playback-progressbar { --fg-color: var(--spice-button) !important; --bg-color: var(--g-fill-press) !important; --is-active-fg-color: var(--spice-button-active) !important; }
 .x-progressBar-progressBarBg, .x-progressBar-fillColor, .x-progressBar-sliderArea { border-radius: 999px !important; }
 .playback-bar__progress-time-elapsed, .main-playbackBarRemainingTime-container { font-variant-numeric: tabular-nums; font-size: 11px !important; color: var(--spice-subtext) !important; }
@@ -193,7 +196,7 @@ html.glass-pip [data-testid="pip-hover-element"] { overflow: visible !important;
 html.glass-pip [data-testid="pip-hover-element"] > * { position: relative !important; flex: 0 0 auto !important; height: 100% !important; width: auto !important; aspect-ratio: 1 / 1 !important; max-width: 100% !important; max-height: 100% !important; margin: 0 !important; padding: 0 !important; transform: none !important; background: transparent !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
 html.glass-pip [data-testid="pip-hover-element"] > * * { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; transform: none !important; translate: none !important; background: transparent !important; background-image: none !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; mask-image: none !important; -webkit-mask-image: none !important; transition: opacity 200ms !important; animation: none !important; }
 /* overflow: clip, not visible: on an <img>, "visible" switches the rounded clipping OFF (the corners came out square on screen) */
-html.glass-pip [data-testid="pip-hover-element"] img, html.glass-pip [data-testid="pip-hover-element"] video, html.glass-pip [data-testid="pip-hover-element"] canvas { overflow: clip !important; object-fit: cover !important; border-radius: 16px !important; box-shadow: 0 3px 10px rgba(0,0,0,0.2) !important; display: block !important; }
+html.glass-pip [data-testid="pip-hover-element"] img, html.glass-pip [data-testid="pip-hover-element"] video, html.glass-pip [data-testid="pip-hover-element"] canvas { overflow: clip !important; object-fit: cover !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; display: block !important; }   /* no shadow: on keyed glass a soft shadow is "ink", and in light mode it turned into a pale square with lines around the cover */
 /* title + artist + liked */
 html.glass-pip [data-testid="pip-hover-element"] + div { order: 2; flex: 0 0 auto !important; width: 100% !important; position: relative !important; inset: auto !important; padding: 0 !important; box-sizing: border-box; }
 html.glass-pip [data-testid="context-item-info-title"], html.glass-pip [data-testid="context-item-info-title"] * { font-size: 16px !important; font-weight: 650 !important; letter-spacing: -0.02em !important; color: var(--spice-text) !important; }
@@ -205,8 +208,16 @@ html.glass-pip [data-testid="document-pip-hover-element"] button { color: var(--
 html.glass-pip [data-testid="document-pip-hover-element"] button:hover { color: var(--spice-text) !important; background: var(--g-fill-hover) !important; }
 html.glass-pip [data-testid="control-button-skip-back"] svg, html.glass-pip [data-testid="control-button-skip-forward"] svg { width: 20px !important; height: 20px !important; }
 html.glass-pip [data-testid="control-button-playpause"] { width: 50px !important; height: 50px !important; padding: 0 !important; background: transparent !important; }
-html.glass-pip [class*="text-bright-accent"], html.glass-pip [class*="text-bright-accent"] svg { color: var(--spice-button-active) !important; fill: currentColor !important; }
+html.glass-pip [class*="text-bright-accent"], html.glass-pip [class*="text-bright-accent"] svg { color: var(--spice-button) !important; fill: currentColor !important; }
 html.glass-pip [data-testid="control-button-playpause"] > span { background: var(--spice-button) !important; color: #fff !important; width: 50px !important; height: 50px !important; border-radius: 999px !important; display: flex !important; align-items: center !important; justify-content: center !important; min-block-size: 0 !important; block-size: 50px !important; inline-size: 50px !important; min-inline-size: 50px !important; flex: 0 0 50px !important; padding: 0 !important; }
 html.glass-pip [data-testid="control-button-playpause"] svg { fill: #fff !important; color: #fff !important; }
 html.glass-pip .volume-bar__slider-container { background: var(--spice-card) !important; border-radius: 12px !important; box-shadow: inset 0 0 0 1px var(--g-line-strong) !important; }
-html.glass-pip .playback-progressbar, html.glass-pip .playback-bar { --fg-color: var(--spice-button) !important; --bg-color: var(--g-fill-press) !important; }
+html.glass-pip .playback-progressbar, html.glass-pip .playback-bar { --fg-color: var(--spice-button) !important; --bg-color: rgba(var(--spice-rgb-text), 0.28) !important; }
+
+/* Chromium draws this one row with coloured sub-pixel smoothing (the rest of the widget is greyscale): red/blue fringes that
+   the Glass Key effect cannot un-mix, a dirty halo round the times over any colourful backdrop. A layer of its own has no
+   opaque background, which switches sub-pixel smoothing off. (--disable-lcd-text does not reach a picture-in-picture window.) */
+html.glass-pip .playback-bar { will-change: transform; }
+/* Spotify paints the "add to liked songs" ring white at 70 % whatever the scheme: invisible on the light glass */
+html.glass-pip button[aria-label*="Liked Songs"], html.glass-pip button[aria-label*="Liked Songs"] svg, html.glass-pip button[aria-checked] svg { color: var(--spice-subtext) !important; fill: currentColor !important; }
+html.glass-pip button[aria-checked="true"] svg { color: var(--spice-button) !important; }

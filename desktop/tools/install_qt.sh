@@ -9,6 +9,6 @@ if [ "${1:-}" = "--undo" ]; then
 fi
 [ -f "$P/styles/darkly6.so.orig-glass" ] || cp "$P/styles/darkly6.so" "$P/styles/darkly6.so.orig-glass"
 install -m 755 "$SRC/darkly6.so" "$P/styles/darkly6.so"
-install -m 755 "$SRC/org.kde.glass17.so" "$P/org.kde.kdecoration3/org.kde.glass17.so"
+install -m 755 "$SRC/org.kde.glass18.so" "$P/org.kde.kdecoration3/org.kde.glass18.so"
 # older builds stay until KWin is restarted (the running KWin may still have one loaded); harmless files
 echo "installed. Now run (as yourself):  $(dirname "$0")/use_decoration.sh glass"

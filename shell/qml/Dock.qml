@@ -312,7 +312,7 @@ Surface {
                 anchors.bottomMargin: (dockH - Config.dockIcon) / 2
                 // Rendered once at the magnified size and zoomed with `scale`: animating `size` re-rasterised the glyph and
                 // re-created both glow blurs on every frame, which stuttered the panel when it was opened mid-hover.
-                size: Math.round(Config.dockIcon * Config.dockMagnify); source: Config.launcherIcon; hovered: dock.hoverIndex === -1; active: dock.launcherOpen
+                size: Math.round(Config.dockIcon * Config.dockMagnify); source: Config.launcherIcon; calm: true; hovered: dock.hoverIndex === -1; active: dock.launcherOpen
                 transformOrigin: Item.Bottom
                 scale: parent.mag / Config.dockMagnify
                 Behavior on scale { Spring {} } }

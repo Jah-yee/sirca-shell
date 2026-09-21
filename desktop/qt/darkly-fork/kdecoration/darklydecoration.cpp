@@ -145,6 +145,25 @@ static QColor g_shadowColor = Qt::black;
 static std::shared_ptr<KDecoration3::DecorationShadow> g_sShadow;
 static std::shared_ptr<KDecoration3::DecorationShadow> g_sShadowActive;   // Glass: focused window
 static std::shared_ptr<KDecoration3::DecorationShadow> g_sShadowBare;     // Glass: windows with a hidden title bar (widgets): shadow only
+// Glass: a window corner that sits IN a corner of the screen is square, so it fills that corner (see Decoration::squareCorners).
+// The shadow texture holds the edge line and the cut-out of the window shape, so every combination of square corners needs a
+// texture of its own: kept here by (kind of window, corner mask). The three slots above are the mask-0 textures.
+static QHash<int, std::shared_ptr<KDecoration3::DecorationShadow>> g_sShadowSquared;
+enum GlassCorner { GlassTopLeft = 1, GlassTopRight = 2, GlassBottomRight = 4, GlassBottomLeft = 8 };
+// a rounded rectangle with the corners in `square` left square
+static QPainterPath glassCornerPath(const QRectF &r, qreal radius, int square)
+{
+    QPainterPath p;
+    p.addRoundedRect(r, radius, radius);
+    if (!square) return p;
+    QPainterPath c;
+    c.setFillRule(Qt::WindingFill);
+    if (square & GlassTopLeft) c.addRect(QRectF(r.left(), r.top(), radius, radius));
+    if (square & GlassTopRight) c.addRect(QRectF(r.right() - radius, r.top(), radius, radius));
+    if (square & GlassBottomRight) c.addRect(QRectF(r.right() - radius, r.bottom() - radius, radius, radius));
+    if (square & GlassBottomLeft) c.addRect(QRectF(r.left(), r.bottom() - radius, radius, radius));
+    return p.united(c).simplified();
+}
 
 //________________________________________________________________
 Decoration::Decoration(QObject *parent, const QVariantList &args)
@@ -163,6 +182,7 @@ Decoration::~Decoration()
         g_sShadow.reset();
         g_sShadowActive.reset();
         g_sShadowBare.reset();
+        g_sShadowSquared.clear();
     }
 }
 
@@ -272,6 +292,8 @@ bool Decoration::init()
 
     connect(c, &KDecoration3::DecoratedWindow::activeChanged, this, &Decoration::updateBlur);
     connect(c, &KDecoration3::DecoratedWindow::activeChanged, this, &Decoration::createShadow);   // Glass: focus glow
+    connect(c, &KDecoration3::DecoratedWindow::adjacentScreenEdgesChanged, this, &Decoration::createShadow);   // Glass: square corners
+    connect(c, &KDecoration3::DecoratedWindow::adjacentScreenEdgesChanged, this, &Decoration::updateBlur);
     connect(c, &KDecoration3::DecoratedWindow::widthChanged, this, &Decoration::updateTitleBar);
     connect(c, &KDecoration3::DecoratedWindow::maximizedChanged, this, &Decoration::updateTitleBar);
 
@@ -396,13 +418,10 @@ if (m_internalSettings->floatingTitlebar()){
             QPainterPath clipRect;
             clipRect.addRect(m_titleRect);
 
-            // the rect is made a little bit larger to be able to clip away the rounded corners at the bottom and sides
-            m_titleBarPath->addRoundedRect(m_titleRect.adjusted(isLeftEdge() ? -m_scaledCornerRadius : 0,
-                                                                isTopEdge() ? -m_scaledCornerRadius : 0,
-                                                                isRightEdge() ? m_scaledCornerRadius : 0,
-                                                                m_scaledCornerRadius),
-                                           m_scaledCornerRadius,
-                                           m_scaledCornerRadius);
+            // the rect is made a little bit larger to be able to clip away the rounded corners at the bottom.
+            // Glass: a top corner is square only when it sits in a corner of the screen (it used to go square as soon as ONE
+            // of its edges touched: a window tiled to the left half lost both left corners AND both top corners)
+            *m_titleBarPath = glassCornerPath(QRectF(m_titleRect.adjusted(0, 0, 0, m_scaledCornerRadius)), m_scaledCornerRadius, squareCorners());
 
             *m_titleBarPath = m_titleBarPath->intersected(clipRect);
         }
@@ -412,7 +431,7 @@ if (m_internalSettings->floatingTitlebar()){
     m_windowPath->clear(); // clear the path for subsequent calls to this function
     if (!c->isShaded()) {
         if (s->isAlphaChannelSupported() && !isMaximized())
-            m_windowPath->addRoundedRect(rect(), m_scaledCornerRadius, m_scaledCornerRadius);
+            *m_windowPath = glassCornerPath(rect(), m_scaledCornerRadius, squareCorners());
         else
             m_windowPath->addRect(rect());
 
@@ -564,16 +583,12 @@ if (m_internalSettings->floatingTitlebar()){
     qreal bottomRightRadius = 0;
 
     if (m_internalSettings->roundedCorners()) {
-        // Top corners
-        if (!isTopEdge()) {
-            topLeftRadius = m_scaledCornerRadius;
-            topRightRadius = m_scaledCornerRadius;
-        }
-        // Bottom corners
-        if (!isBottomEdge()) {
-            bottomLeftRadius = m_scaledCornerRadius;
-            bottomRightRadius = m_scaledCornerRadius;
-        }
+        // Glass: per corner (see squareCorners)
+        const int sq = squareCorners();
+        if (!(sq & GlassTopLeft)) topLeftRadius = m_scaledCornerRadius;
+        if (!(sq & GlassTopRight)) topRightRadius = m_scaledCornerRadius;
+        if (!(sq & GlassBottomLeft)) bottomLeftRadius = m_scaledCornerRadius;
+        if (!(sq & GlassBottomRight)) bottomRightRadius = m_scaledCornerRadius;
     }
 #endif
 #if KDECORATION_VERSION >= KDECORATION_VERSION_CHECK(6, 5, 0)
@@ -635,14 +650,10 @@ if (m_internalSettings->floatingTitlebar()){
     qreal bottomRightRadius = 0;
 
     if (hasNoBorders() && m_internalSettings->roundedCorners()) {
-        if (!isBottomEdge()) {
-            if (!isLeftEdge()) {
-                bottomLeftRadius = m_scaledCornerRadius;
-            }
-            if (!isRightEdge()) {
-                bottomRightRadius = m_scaledCornerRadius;
-            }
-        }
+        // Glass: per corner (see squareCorners). It used to be: no bottom radius at all once ANY of the three edges touched.
+        const int sq = squareCorners();
+        if (!(sq & GlassBottomLeft)) bottomLeftRadius = m_scaledCornerRadius;
+        if (!(sq & GlassBottomRight)) bottomRightRadius = m_scaledCornerRadius;
     }
 #endif
 #if KDECORATION_VERSION >= KDECORATION_VERSION_CHECK(6, 5, 0)
@@ -883,7 +894,7 @@ void Decoration::paint(QPainter *painter, const QRectF &repaintRegion)
             painter->setClipRect(0, borderTop(), size().width(), size().height() - borderTop(), Qt::IntersectClip);
 
         if (s->isAlphaChannelSupported())
-            painter->drawRoundedRect(rect(), m_scaledCornerRadius, m_scaledCornerRadius);
+            painter->drawPath(glassCornerPath(rect(), m_scaledCornerRadius, squareCorners()));
         else
             painter->drawRect(rect());
 
@@ -1082,8 +1093,10 @@ void Decoration::createShadow()
     // at the decoration's radius cannot meet such a window's corners: the surface stopped short of the line. Those windows
     // get the shadow only, and draw their own rim.
     const bool bare = hideTitleBar();
-    std::shared_ptr<KDecoration3::DecorationShadow> &slot = bare ? g_sShadowBare : (glassActive ? g_sShadowActive : g_sShadow);
-    if (g_shadowSizeEnum != m_internalSettings->shadowSize() || g_shadowStrength != m_internalSettings->shadowStrength() || g_shadowColor != m_internalSettings->shadowColor()) { g_sShadow.reset(); g_sShadowActive.reset(); g_sShadowBare.reset(); }
+    const int sq = isMaximized() ? 0 : squareCorners();       // a maximized window shows neither its shadow nor its line
+    const int kind = bare ? 2 : (glassActive ? 1 : 0);
+    if (g_shadowSizeEnum != m_internalSettings->shadowSize() || g_shadowStrength != m_internalSettings->shadowStrength() || g_shadowColor != m_internalSettings->shadowColor()) { g_sShadow.reset(); g_sShadowActive.reset(); g_sShadowBare.reset(); g_sShadowSquared.clear(); }
+    std::shared_ptr<KDecoration3::DecorationShadow> &slot = sq ? g_sShadowSquared[kind * 16 + sq] : (bare ? g_sShadowBare : (glassActive ? g_sShadowActive : g_sShadow));
     if (!slot || g_shadowSizeEnum != m_internalSettings->shadowSize() || g_shadowStrength != m_internalSettings->shadowStrength()
         || g_shadowColor != m_internalSettings->shadowColor()) {
         g_shadowSizeEnum = m_internalSettings->shadowSize();
@@ -1138,7 +1151,7 @@ void Decoration::createShadow()
         if (m_internalSettings->floatingTitlebar()){
         painter.drawRoundedRect(innerRect.adjusted(0, isMaximized() ? 0 : (buttonSize() + (Metrics::TitleBar_TopMargin * 2) + 13), 0, 0), m_scaledCornerRadius + 0.5, m_scaledCornerRadius + 0.5);
         } else {
-        painter.drawRoundedRect(innerRect, m_scaledCornerRadius + 0.5, m_scaledCornerRadius + 0.5);
+        painter.drawPath(glassCornerPath(QRectF(innerRect), m_scaledCornerRadius + 0.5, sq));
         }
 
         // Glass: THE edge line. Drawn after the window area has been cut out, as a full hairline just outside the edge, so
@@ -1159,14 +1172,14 @@ void Decoration::createShadow()
             painter.setBrush(Qt::NoBrush);
             const QRectF o = QRectF(innerRect).adjusted(-lw / 2, -lw / 2, lw / 2, lw / 2);
             const qreal r = m_scaledCornerRadius + lw / 2;
-            painter.drawRoundedRect(o, r, r);
+            painter.drawPath(glassCornerPath(o, r, sq));
             // A 1 px anti-aliased ARC spreads its light over two pixels, so at this low alpha it reads far dimmer than the
             // straight runs next to it ("the corners are missing"). Stroke the four arcs a second time to even them out.
             QPainterPath arcs;
-            arcs.moveTo(o.left(), o.top() + r);        arcs.arcTo(QRectF(o.left(), o.top(), 2 * r, 2 * r), 180, -90);
-            arcs.moveTo(o.right() - r, o.top());       arcs.arcTo(QRectF(o.right() - 2 * r, o.top(), 2 * r, 2 * r), 90, -90);
-            arcs.moveTo(o.right(), o.bottom() - r);    arcs.arcTo(QRectF(o.right() - 2 * r, o.bottom() - 2 * r, 2 * r, 2 * r), 0, -90);
-            arcs.moveTo(o.left() + r, o.bottom());     arcs.arcTo(QRectF(o.left(), o.bottom() - 2 * r, 2 * r, 2 * r), 270, -90);
+            if (!(sq & GlassTopLeft)) { arcs.moveTo(o.left(), o.top() + r);        arcs.arcTo(QRectF(o.left(), o.top(), 2 * r, 2 * r), 180, -90); }
+            if (!(sq & GlassTopRight)) { arcs.moveTo(o.right() - r, o.top());       arcs.arcTo(QRectF(o.right() - 2 * r, o.top(), 2 * r, 2 * r), 90, -90); }
+            if (!(sq & GlassBottomRight)) { arcs.moveTo(o.right(), o.bottom() - r);    arcs.arcTo(QRectF(o.right() - 2 * r, o.bottom() - 2 * r, 2 * r, 2 * r), 0, -90); }
+            if (!(sq & GlassBottomLeft)) { arcs.moveTo(o.left() + r, o.bottom());     arcs.arcTo(QRectF(o.left(), o.bottom() - 2 * r, 2 * r, 2 * r), 270, -90); }
             // How much: measured offline (same painter code into a QImage, brightness summed across the line on a straight run
             // and on the arc at 45 deg). At 1.0 px the arc needs the full 0.85; at 1.6 px (focused windows) 0.85/lw^2 = 0.33 left
             // the arcs ~19 % brighter than the runs next to them, which showed on the dimmer bottom corners; ~0.11 is level.

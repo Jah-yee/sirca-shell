@@ -3,8 +3,8 @@
 set -euo pipefail
 D=/usr/lib/x86_64-linux-gnu/qt6/plugins/org.kde.kdecoration3
 case "${1:-}" in
-  glass) [ -f "$D/org.kde.glass17.so" ] || { echo "install first:  sudo $(cd "$(dirname "$0")" && pwd)/install_qt.sh"; exit 1; }
-         kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library org.kde.glass17; kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme Glass ;;
+  glass) [ -f "$D/org.kde.glass18.so" ] || { echo "install first:  sudo $(cd "$(dirname "$0")" && pwd)/install_qt.sh"; exit 1; }
+         kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library org.kde.glass18; kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme Glass ;;
   darkly) kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library org.kde.darkly; kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme Darkly ;;
   *) echo "usage: $0 glass|darkly"; exit 2 ;;
 esac

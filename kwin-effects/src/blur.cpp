@@ -487,7 +487,17 @@ void BlurEffect::updateBlurRegion(EffectWindow *w)
     if (!content.has_value() && w->isNormalWindow() && !m_settings.forceBlur.forceClasses.isEmpty()) {
         const auto &fc = m_settings.forceBlur.forceClasses;
         if (fc.contains(w->window()->resourceClass(), Qt::CaseInsensitive) || fc.contains(w->window()->resourceName(), Qt::CaseInsensitive)) {
-            content = BlurRegion();
+            // NOT "the whole contents": an app that decorates itself (a Chromium picture-in-picture window) hands over a
+            // buffer with a transparent margin for its own shadow (16 / 10 / 32 px), and the contents rectangle is that
+            // whole buffer. Blurring all of it drew a frosted BOX around the window that ended abruptly (it read as a huge,
+            // cut-off shadow over anything that is not plain wallpaper). Blur exactly the frame.
+            const QRectF f = w->frameGeometry(), c = w->contentsRect();
+            const QRect frameLocal(QPoint(0, 0), f.size().toSize());
+#ifdef GLASS_X11
+            content = BlurRegion(frameLocal.translated(-qRound(c.x()), -qRound(c.y())));
+#else
+            content = Region(Rect(frameLocal.translated(-qRound(c.x()), -qRound(c.y()))));
+#endif
         }
     }
 

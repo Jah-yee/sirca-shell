@@ -3,7 +3,7 @@
 A liquid-glass desktop shell for KDE Plasma 6 on Wayland: a top bar and a dock, with popups that grow out of them.
 KWin stays the compositor; only Plasma's panels are replaced, and one command gives them back.
 
-![The desktop: top bar and dock over the wallpaper](screenshots/hero.png)
+![The desktop in dark mode: top bar, dock, Dolphin, a terminal and the Spotify mini player](screenshots/dark-blue.jpg)
 
 ## A look around
 
@@ -11,26 +11,39 @@ KWin stays the compositor; only Plasma's panels are replaced, and one command gi
 |:--:|:--:|
 | ![Quick settings](screenshots/quick-settings.png) | ![Launcher](screenshots/launcher.png) |
 | **Quick settings** grow out of the bar: network, Bluetooth, audio, brightness, Do Not Disturb, colour themes | **Launcher** grows out of the dock; Meta+Space searches apps, files, settings, sums and units |
-| ![Window previews](screenshots/dock-previews.png) | ![Notifications](screenshots/notifications.png) |
-| **Dock**: window previews with peek, per-window pills, badges, drag to reorder | **Notifications** with history, grouped per app, replies and progress |
-| ![Edit mode](screenshots/edit-mode.png) | ![Tile picker](screenshots/tiles.png) |
-| **Edit mode**: right-click the bar or dock. Drag widgets, resize, set blur, tint and haze per surface | **Tile picker** (Meta+A), screenshots and recording (Meta+Shift+S / R), clipboard history (Meta+V) |
+| ![Notifications](screenshots/notifications.png) | ![Now playing](screenshots/media.png) |
+| **Notifications** with history, grouped per app, replies and progress | **Now playing** in the bar, with a level meter, and its player popup |
+
+![Window previews above the dock](screenshots/dock-previews.png)
+
+**Dock**: window previews with peek, per-window pills, badges, drag to reorder.
+
+![Edit mode: the bar and the dock with their settings next to them](screenshots/edit-mode.jpg)
+
+**Edit mode**: right-click the bar or the dock. Drag widgets, resize, set blur, tint and haze per surface. Also on board: a tile picker
+(Meta+A), screenshots and recording (Meta+Shift+S / R), clipboard history (Meta+V).
 
 ### Light, dark and seven colours
 
 One switch changes the shell, KDE and GTK apps, icons and the wallpaper together, as a single cross-fade.
 
-![Light and dark](screenshots/light-dark.png)
+| Dark | Light |
+|:--:|:--:|
+| ![Blue, dark](screenshots/dark-blue.jpg) | ![Blue, light](screenshots/light-blue.jpg) |
+| ![Cyan, dark](screenshots/dark-cyan.jpg) | ![Cyan, light](screenshots/light-cyan.jpg) |
+| ![Green, dark](screenshots/dark-green.jpg) | ![Green, light](screenshots/light-green.jpg) |
+| ![Yellow, dark](screenshots/dark-yellow.jpg) | ![Yellow, light](screenshots/light-yellow.jpg) |
+| ![Red, dark](screenshots/dark-red.jpg) | ![Red, light](screenshots/light-red.jpg) |
+| ![Pink, dark](screenshots/dark-pink.jpg) | ![Pink, light](screenshots/light-pink.jpg) |
+| ![Purple, dark](screenshots/dark-purple.jpg) | ![Purple, light](screenshots/light-purple.jpg) |
 
-![The seven colour themes](screenshots/themes.jpg)
+Click a picture for the full 3440 × 1440 cut.
 
 ### Apps in the same glass
 
-![Dolphin and System Settings](screenshots/apps.png)
+KDE and GTK apps get the same glass, as in the pictures above: Dolphin, a terminal and the Spotify mini player.
 
 Optional extras: a Spotify theme with a glass mini player, Firefox accent colours, Ghostty styling.
-
-![Spotify and its mini player](screenshots/spotify.png)
 
 ## Install
 

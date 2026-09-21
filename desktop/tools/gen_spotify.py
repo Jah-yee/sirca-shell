@@ -21,7 +21,7 @@ def shade(h, dl, ds=0.0):
 # keeps neutral pictures off the key line. Without the effect they are simply the theme's near-black / near-white surfaces.
 # ONE key per mode. The window (chrome) is the bare key; panels are the key plus PANEL (4 %) of the text colour, which is what
 # the effect's shader expects (its alpha and tint are continuous along key -> text; two separate keys drew lines across panels).
-KEY = {False: "14171d", True: "f6f8fd"}; PANEL = 0.04
+KEY = {False: "14171d", True: "f6f8fd"}; PANEL = 0.08     # must match PANEL in the Glass Key shader
 def panel_of(light): return hx(mix(rgb(KEY[light]), rgb((T["light"] if light else T["dark"])["text"]), PANEL))
 KEYS = {False: {"content": None, "chrome": KEY[False]}, True: {"content": None, "chrome": KEY[True]}}
 def scheme(p, light):
@@ -52,9 +52,29 @@ for name, text in (("color.ini", out), ("user.css", css)):
 # the effect's side of the key: colours for the CURRENT mode, the neutral glass tints and opacities from the tokens
 if shutil.which("kwriteconfig6"):
     P = T["light"] if mode == "light" else T["dark"]; G = T["glass"]
-    vals = {"ContentKey": "#" + KEY[mode == "light"], "ChromeKey": "#" + KEY[mode == "light"], "Text": P["text"], "ContentTint": P["view"], "ChromeTint": P["sidebar"],
+    # With HDR on, the compositor shows Chromium's surfaces darker than other windows' same colours, and the glass tint goes
+    # through that surface's transform. Measured against a terminal with the same glass (#18191b at 62 %, #f3f4f6 at 44 %):
+    # dark needs the tint lifted by 12 of 255 (13 -> 25), light needs pure white (implied 223 -> 239, terminal 242).
+    # An own encoding in the shader (gamma 2.2 x the output's reference white) was tried and is wrong at both ends
+    # (dark tint came out black, mid grey too bright). "spotifyTintLift" in the shell config overrides the dark guess.
+    def hdr_on():
+        try:
+            d = json.loads(subprocess.run(["kscreen-doctor", "-j"], capture_output=True, text=True, timeout=5).stdout)
+            return any(o.get("enabled") and o.get("hdr") for o in d.get("outputs", []))
+        except Exception: return False
+    HDR = hdr_on()
+    # 2026-09-21: NO lift by default any more. The lift (12 in dark, pure white in light) was calibrated while the shader still
+    # applied its alpha to the decoration a second time and before its colour path was fixed; measured now over plain light
+    # and dark backdrops, the unlifted tints give exactly the terminal's and the title bar's values in both modes.
+    lift = C.get("spotifyTintLift"); lift = int(lift) if isinstance(lift, (int, float)) else 0
+    def lifted(h):
+        if mode == "light": return h
+        return "#" + hx(tuple(min(1.0, v + lift / 255.0) for v in rgb(h)))
+    vals = {"ContentKey": "#" + KEY[mode == "light"], "ChromeKey": "#" + scheme(P, mode == "light")["button"], "Text": P["text"], "ContentTint": lifted(P["view"]), "ChromeTint": lifted(P["sidebar"]),
             "ContentAlpha": G.get("contentOpacityLight" if mode == "light" else "contentOpacity", 0.72), "ChromeAlpha": 0.46 if mode == "light" else 0.62,
-            "Shadow": 0.30 if mode == "light" else 0.40}      # own shadow of undecorated windows (the Miniplayer); needs the glasskey2 build
+            "Shadow": 0.22 if mode == "light" else 0.30}      # own shadow of undecorated windows (the Miniplayer); needs the glasskey2 build
+    # ChromeKey was the v1 second key, unused since. The shader now reads it as the ACCENT: the anti-aliased rim of an
+    # accent-filled control (the play button) is accent mixed with the surface, and is un-mixed like text is.
     for k, v in vals.items(): subprocess.run(["kwriteconfig6", "--file", "kwinrc", "--group", "Effect-glasskey", "--key", k, str(v)], check=False)
     # the plugin's id is its file name, and a rebuilt plugin is installed under a new one (glasskey1, glasskey2, ...)
     loaded = subprocess.run(["qdbus6", "org.kde.KWin", "/Effects", "org.kde.kwin.Effects.loadedEffects"], check=False, capture_output=True, text=True).stdout.split()

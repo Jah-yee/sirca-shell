@@ -82,12 +82,12 @@ Item {
         Item { id: label; anchors.verticalCenter: parent.verticalCenter
             width: Math.min(line.implicitWidth, 300); height: line.implicitHeight
             Text { id: line; textFormat: Text.StyledText; font.pixelSize: 13; font.weight: Font.Medium; color: Config.ink
-                opacity: island.playing ? 1 : 0.7
+                opacity: island.playing ? 1 : 0.88      // 0.7 on a see-through bar read as washed out
                 Behavior on opacity { NumberAnimation { duration: Config.normal } }
                 text: {
                     const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
                     const t = island.player ? esc(island.player.track ?? "") : ""
-                    return island.artist !== "" ? t + "<font color=\"" + Config.hex(Config.inkDim) + "\">&nbsp;&nbsp;" + esc(island.artist) + "</font>" : t
+                    return island.artist !== "" ? t + "<font color=\"" + Config.hex(Qt.rgba(Config.ink.r, Config.ink.g, Config.ink.b, 0.84)) + "\">&nbsp;&nbsp;" + esc(island.artist) + "</font>" : t
                 }
                 layer.enabled: line.implicitWidth > 300
                 layer.effect: MultiEffect { maskEnabled: true; maskSource: fadeMask }

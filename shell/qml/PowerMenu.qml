@@ -25,7 +25,9 @@ Window {
     property int secondsLeft: 0
     readonly property int tileW: 112
     readonly property int panelW: actions.length * tileW + 32
-    readonly property int panelH: 168
+    // 18 above the tiles, 18 below. The countdown line needs room only while an action is armed: the panel grows for it.
+    readonly property int panelH: 18 + 118 + 18 + (armed !== "" ? 22 : 0)
+    onPanelHChanged: shapeLater.restart()
     readonly property rect panel: Qt.rect(Math.round((width - panelW) / 2), Math.round(height * 0.34), panelW, panelH)
     property bool setupDone: false
     property real show: 0
@@ -94,7 +96,7 @@ Window {
                         text: tile.waiting ? "Press again" : tile.modelData.label }
                     HoverHandler { id: th; onHoveredChanged: if (hovered && sw.armed === "") sw.current = tile.index }
                     TapHandler { id: tt; onTapped: sw.activate(tile.index) } } } }
-        Text { anchors.horizontalCenter: parent.horizontalCenter; y: parent.height - 30; color: Config.inkDim; font.pixelSize: 12
-            text: sw.armed !== "" ? "Press again to " + sw.actions[sw.current].label.toLowerCase() + "  ·  " + sw.secondsLeft + " s  ·  Esc cancels" : "Arrows and Enter, or L  S  O  R  U" }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; y: parent.height - 32; color: Config.inkDim; font.pixelSize: 12
+            text: sw.armed !== "" ? "Press again to " + sw.actions[sw.current].label.toLowerCase() + "  ·  " + sw.secondsLeft + " s  ·  Esc cancels" : ""; visible: sw.armed !== "" }
     }
 }

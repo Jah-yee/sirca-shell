@@ -96,7 +96,8 @@ QtObject {
     readonly property real barIconScale: get("barIconScale", 1.0)
     // look, per surface (each falls back to the shared value from Appearance)
     readonly property bool barBlur: get("barBlur", true)
-    readonly property real barTintAlpha: get("barTintAlpha", get("tintAlpha", 0.15))
+    readonly property real barTintAlpha: get("barTintAlpha", 0.62)        // dark mode: the bar wears the THEME's app glass (24,25,27 at 62 %), like title bars and sidebars
+    readonly property color barTint: mix(Qt.rgba(24/255, 25/255, 27/255, barTintAlpha), Qt.rgba(0.975, 0.98, 0.99, Math.min(0.94, get("barTintAlphaLight", 0.15) + barMilk)))
     readonly property real barMilk: get("barMilk", 0.36)                 // light mode: the bar was 75 % white, which on a light wallpaper reads as a solid strip, not glass
     readonly property real barRimAlpha: get("barRimAlpha", get("rimAlpha", 0.09))
     readonly property real barSheen: get("barSheen", get("sheenAlpha", 0.06))

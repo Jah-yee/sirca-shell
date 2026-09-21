@@ -168,7 +168,7 @@ Surface {
         id: shape
         anchors.fill: parent
         bar: bar.barRect
-        tint: Config.glassTint(Config.barTintAlpha, Config.barMilk); rim: Qt.rgba(1, 1, 1, Config.barRimAlpha * Config.mixn(1, 3.2)); sheen: Config.barSheen * Config.mixn(1, 2.5); shadowStrength: Config.barShadow   // literal-ok: the rim is white light in both modes
+        tint: Config.barTint; rim: Qt.rgba(1, 1, 1, Config.barRimAlpha * Config.mixn(1, 3.2)); sheen: Config.barSheen * Config.mixn(1, 2.5); shadowStrength: Config.barShadow   // literal-ok: the rim is white light in both modes
         lobes: [{ x: trayRect.x, w: trayRect.width, h: trayH }, { x: clockRect.x, w: clockRect.width, h: clockH }, { x: gearRect.x, w: gearRect.width, h: gearH }, { x: notifRect.x, w: notifRect.width, h: notifH }, { x: mediaRect.x, w: mediaRect.width, h: mediaH }, { x: cardsRect.x, w: cardsRect.width, h: cardsH }]
         onPolygonChanged: bar.pushShape()
     }
