@@ -3,7 +3,7 @@
 A liquid-glass desktop shell for KDE Plasma 6 on Wayland: a top bar and a dock, with popups that grow out of them.
 KWin stays the compositor; only Plasma's panels are replaced, and one command gives them back.
 
-https://github.com/user-attachments/assets/5f7a803b-d113-40a3-bfd6-1c2d2e591505
+https://github.com/user-attachments/assets/1a73bd3d-5c41-4f6a-a333-6b80d5c2df79
 
 ## A look around
 
