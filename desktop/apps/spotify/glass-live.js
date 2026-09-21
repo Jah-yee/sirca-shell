@@ -29,11 +29,25 @@
         if (!st) { st = pipDoc.createElement("style"); st.id = "glass-pip-style"; pipDoc.head.appendChild(st) }
         st.textContent = (seen["colors.css"] || "") + "\n" + (seen["user.css"] || "");
         pipDoc.documentElement.classList.add("glass-pip");
+        fixCovers();
+    }
+    // The mini player's cover comes as <img src="spotify:image:<id>">, an internal address that Spotify resolves itself. Seen
+    // 2026-09-21: it stayed at data-image-status="loading" for good (an empty square), while the same picture loads fine from
+    // the public address the main window uses. Give a picture 1.5 s, then point it there.
+    function fixCovers() {
+        if (!pipDoc) return;
+        for (const img of pipDoc.querySelectorAll('img[src^="spotify:image:"]')) {
+            if (img.dataset.glassRetry) continue;
+            img.dataset.glassRetry = "1";
+            const src = img.getAttribute("src");
+            setTimeout(() => { if (img.isConnected && img.getAttribute("src") === src && !img.naturalWidth) img.src = "https://i.scdn.co/image/" + src.split(":").pop(); delete img.dataset.glassRetry; }, 1500);
+        }
     }
     try {
         if (window.documentPictureInPicture) documentPictureInPicture.addEventListener("enter", ev => {
             pipDoc = ev.window.document; themePip();
             [300, 1200].forEach(ms => setTimeout(themePip, ms));                       // Spotify fills the document after the event
+            new ev.window.MutationObserver(fixCovers).observe(pipDoc.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["src"] });   // song changes
             ev.window.addEventListener("pagehide", () => { pipDoc = null });
         });
     } catch (e) {}

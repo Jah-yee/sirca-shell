@@ -3,7 +3,9 @@
 A liquid-glass desktop shell for KDE Plasma 6 on Wayland: a top bar and a dock, with popups that grow out of them.
 KWin stays the compositor; only Plasma's panels are replaced, and one command gives them back.
 
-![The desktop in dark mode: top bar, dock, Dolphin, a terminal and the Spotify mini player](screenshots/dark-blue.jpg)
+[![A tour of the desktop (video): popups, colour themes, light and dark](screenshots/header-poster.jpg)](screenshots/header.mp4)
+
+*Click the picture for the video: 46 seconds, 3440 × 1440.*
 
 ## A look around
 
