@@ -102,6 +102,7 @@ Keep the cloned folder if you install the light/dark switch. `glass-mode` and th
 | | |
 |---|---|
 | KDE Plasma 6.6, Wayland, KWin | yes, this is what I use |
+| KDE Plasma 6.7 | it all compiles against 6.7.5, but I have not run it there yet. Tell me how it goes |
 | Older Plasma 6 | maybe. The shell might miss things, and the KWin effect is picky about versions |
 | X11, Hyprland, Sway, GNOME | no |
 | One screen | yes |

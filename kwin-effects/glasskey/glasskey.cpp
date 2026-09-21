@@ -17,6 +17,16 @@ static void ensureResources() { Q_INIT_RESOURCE(glasskey); }
 
 namespace KWin
 {
+// KWin 6.7 removed GLShader::isValid(): there the shader manager returns no shader at all when compiling fails.
+bool GlassKeyEffect::shaderOk() const
+{
+#ifdef GLASS_KWIN_67
+    return m_shader != nullptr;
+#else
+    return m_shader && m_shader->isValid();
+#endif
+}
+
 static QVector3D rgb(const KConfigGroup &g, const char *key, const char *fallback)
 {
     const QColor c(g.readEntry(key, QString::fromLatin1(fallback)));
@@ -30,7 +40,7 @@ GlassKeyEffect::GlassKeyEffect()
     QString frag = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("glass-effect/shaders/glasskey.frag"));
     if (frag.isEmpty()) frag = QStringLiteral(":/effects/glasskey/glasskey.frag");
     m_shader = ShaderManager::instance()->generateShaderFromFile(ShaderTrait::MapTexture, QString(), frag);
-    if (!m_shader || !m_shader->isValid()) qWarning("glasskey: the shader failed to load");
+    if (!shaderOk()) qWarning("glasskey: the shader failed to load");
     reconfigure(ReconfigureAll);
     connect(effects, &EffectsHandler::windowAdded, this, &GlassKeyEffect::consider);
     connect(effects, &EffectsHandler::windowClosed, this, &GlassKeyEffect::forget);
@@ -61,7 +71,7 @@ void GlassKeyEffect::reconfigure(ReconfigureFlags)
 
 void GlassKeyEffect::pushUniforms()
 {
-    if (!m_shader || !m_shader->isValid()) return;
+    if (!shaderOk()) return;
     ShaderBinder binder(m_shader.get());
     m_shader->setUniform("keyContent", m_content); m_shader->setUniform("keyChrome", m_chrome); m_shader->setUniform("keyText", m_text);
     m_shader->setUniform("tintContent", m_tintContent); m_shader->setUniform("tintChrome", m_tintChrome);
@@ -70,7 +80,7 @@ void GlassKeyEffect::pushUniforms()
 
 void GlassKeyEffect::consider(EffectWindow *w)
 {
-    if (!w || !m_shader || !m_shader->isValid() || !w->window()) return;
+    if (!w || !shaderOk() || !w->window()) return;
     const bool want = w->isNormalWindow() && (m_classes.contains(w->window()->resourceClass().toLower()) || m_classes.contains(w->window()->resourceName().toLower()));
     const bool have = m_windows.contains(w);
     if (want && !have) { redirect(w); setShader(w, m_shader.get()); m_windows.append(w); }
@@ -85,7 +95,7 @@ void GlassKeyEffect::consider(EffectWindow *w)
 // contents are inside the texture. Decorated windows already have their shadow: for them the strength is 0.
 void GlassKeyEffect::drawWindow(const RenderTarget &renderTarget, const RenderViewport &viewport, EffectWindow *w, int mask, const Region &deviceRegion, WindowPaintData &data)
 {
-    if (m_shader && m_shader->isValid() && m_windows.contains(w)) {
+    if (shaderOk() && m_windows.contains(w)) {
         const QRectF e = w->expandedGeometry(), f = w->frameGeometry();
         const bool own = !w->hasDecoration() && e.width() > f.width() + 2 && e.height() > f.height() + 2;
         ShaderBinder binder(m_shader.get());

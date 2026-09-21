@@ -36,6 +36,7 @@ private:
     QList<EffectWindow *> m_windows;
     QSet<EffectWindow *> m_followed;
     QStringList m_classes;
+    bool shaderOk() const;
     QVector3D m_content, m_chrome, m_text, m_tintContent, m_tintChrome;
     float m_alphaContent = 0.72f, m_alphaChrome = 0.60f, m_shadow = 0.34f, m_cornerRadius = 12.0f;
 };

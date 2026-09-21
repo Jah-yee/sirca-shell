@@ -43,7 +43,7 @@ head_ "1. Your system"
 FATAL=0; HAVE_EFFECT_DEPS=1
 if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then ok "Wayland session"; else bad "this is not a Wayland session (XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset}). The shell is made of Wayland layer-shell windows: it cannot run on X11."; FATAL=1; fi
 PV="$(plasmashell --version 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?' | head -1)"
-case "$PV" in 6.6*|6.7*) ok "KDE Plasma $PV" ;; 6.*) warn "KDE Plasma $PV: built and used on 6.6. Older 6.x may miss things the shell uses; the KWin effect is version-sensitive." ;;
+case "$PV" in 6.6*) ok "KDE Plasma $PV" ;; 6.7*) warn "KDE Plasma $PV: everything COMPILES against 6.7.5 (tested in a build sandbox), but it has never been run on 6.7. Please report how it goes." ;; 6.*) warn "KDE Plasma $PV: built and used on 6.6. Older 6.x may miss things the shell uses; the KWin effect is version-sensitive." ;;
   "") bad "KDE Plasma was not found. The shell needs KWin and Plasma's libraries (it replaces only Plasma's panels)."; FATAL=1 ;; *) bad "KDE Plasma $PV: Plasma 6 is required."; FATAL=1 ;; esac
 pgrep -x kwin_wayland >/dev/null 2>&1 && ok "KWin is the compositor" || { bad "kwin_wayland is not running. Other compositors (Hyprland, Sway, GNOME) are not supported."; FATAL=1; }
 for t in cmake g++ git python3; do have $t || { bad "missing: $t"; FATAL=1; }; done
@@ -56,6 +56,7 @@ OUTS="$(kscreen-doctor -j 2>/dev/null | "${PYS:-python3}" -c 'import json,sys; p
 "$PYS" -c 'import PIL, numpy' 2>/dev/null && ok "python: Pillow + numpy (wallpaper tools)" || warn "python Pillow / numpy missing: the bundled wallpapers still work, only re-colouring your own wallpaper will not."
 [ -d /usr/share/icons/Papirus ] || [ -d "$HOME/.local/share/icons/Papirus" ] && ok "Papirus icons (folder colours follow the colour theme)" || warn "Papirus icon theme not installed: folder icons will not follow the colour theme."
 have gpu-screen-recorder && ok "gpu-screen-recorder (screen recording)" || warn "gpu-screen-recorder not installed: screenshots work, recording will say it is missing."
+case "$PV" in 6.6*) ;; *) [ -f /usr/include/vulkan/vulkan.h ] || warn "Vulkan headers not installed (vulkan-headers / libvulkan-dev): from 6.7 on, KWin's development files need them, the glass KWin effect will not configure without." ;; esac
 [ -f /usr/include/kwin/effect/effect.h ] || [ -f /usr/include/kwin/effect/offscreeneffect.h ] || { HAVE_EFFECT_DEPS=0; warn "KWin's development headers are not installed (kwin-dev / kwin): the glass KWin effect cannot be built until they are."; }
 if [ $FATAL = 1 ]; then say; bad "This system cannot run the shell (see the red lines). Nothing was changed."; [ $DRY = 1 ] || exit 1; fi
 say "  ${D}Build dependencies are listed in shell/README.md (\"Build dependencies\"); a failed build names what is missing.${N}"
@@ -142,7 +143,7 @@ i_mode() {
     run "seven colour themes in the shell's config (kept if you already have themes)" python3 "$ROOT/setups/write_themes.py" "$HOME/.local/share/wallpapers/sirca"; }
 i_lock() { run "lock screen (active from the next login)" "$ROOT/desktop/tools/install_lock.sh"; }
 i_qt() {
-    run "configure the Qt style and decoration" cmake -S "$ROOT/desktop/qt/darkly-fork" -B "$ROOT/desktop/qt/darkly-fork/build" -DCMAKE_BUILD_TYPE=Release || return 1
+    run "configure the Qt style and decoration" cmake -S "$ROOT/desktop/qt/darkly-fork" -B "$ROOT/desktop/qt/darkly-fork/build" -DCMAKE_BUILD_TYPE=Release -DBUILD_QT5=OFF || return 1
     run "build the Qt style and decoration (several minutes)" cmake --build "$ROOT/desktop/qt/darkly-fork/build" -j"$(nproc)" || return 1
     run "stage the built plugins" bash -c 'mkdir -p "$0/desktop/build" && cp "$0"/desktop/qt/darkly-fork/build/bin/darkly6.so "$0"/desktop/qt/darkly-fork/build/bin/org.kde.glass*.so "$0/desktop/build/"' "$ROOT" || return 1
     say "  ${B}sudo:${N} installing the style and decoration plugins (the stock Darkly plugin is kept as darkly6.so.orig-glass)"
