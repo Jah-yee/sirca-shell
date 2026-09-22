@@ -58,7 +58,8 @@ OUTS="$(kscreen-doctor -j 2>/dev/null | "${PYS:-python3}" -c 'import json,sys; p
 [ "${OUTS:-1}" -gt 1 ] && warn "$OUTS screens: the bar and dock appear on the PRIMARY screen only; the others get none (yet)." || ok "one screen"
 "$PYS" -c 'import PIL, numpy' 2>/dev/null && ok "python: Pillow + numpy (wallpaper tools)" || warn "python Pillow / numpy missing: the bundled wallpapers still work, only re-colouring your own wallpaper will not."
 [ -d /usr/share/icons/Papirus ] || [ -d "$HOME/.local/share/icons/Papirus" ] && ok "Papirus icons (folder colours follow the colour theme)" || warn "Papirus icon theme not installed: folder icons will not follow the colour theme."
-ls /usr/lib*/qt6/qml/org/kde/milou/qmldir /usr/lib/*/qt6/qml/org/kde/milou/qmldir >/dev/null 2>&1 || { bad "the Milou QML module is missing (plasma-milou on Fedora, milou on Arch, qml6-module-org-kde-milou on Ubuntu): the shell's search uses it and the shell exits at start without it."; FATAL=1; }
+MILOU_OK=0; for d in "$(qtpaths6 --qml-dir 2>/dev/null)" "$(qmake6 -query QT_INSTALL_QML 2>/dev/null)" /usr/lib64/qt6/qml /usr/lib/qt6/qml /usr/lib/x86_64-linux-gnu/qt6/qml; do [ -n "$d" ] && [ -f "$d/org/kde/milou/qmldir" ] && MILOU_OK=1; done
+[ $MILOU_OK = 1 ] || { bad "the Milou QML module is missing (package: plasma-milou on Fedora, milou on Arch and Ubuntu): the shell's search uses it and the shell exits at start without it."; FATAL=1; }
 have gpu-screen-recorder && ok "gpu-screen-recorder (screen recording)" || warn "gpu-screen-recorder not installed: screenshots work, recording will say it is missing."
 # KWin's CMake config refuses to be found unless these are installed too, and the distros' kwin dev packages do not pull
 # them in (seen on Fedora 44: epoxy and drm; Vulkan from 6.7 on everywhere)
