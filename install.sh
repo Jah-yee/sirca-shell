@@ -56,10 +56,15 @@ OUTS="$(kscreen-doctor -j 2>/dev/null | "${PYS:-python3}" -c 'import json,sys; p
 "$PYS" -c 'import PIL, numpy' 2>/dev/null && ok "python: Pillow + numpy (wallpaper tools)" || warn "python Pillow / numpy missing: the bundled wallpapers still work, only re-colouring your own wallpaper will not."
 [ -d /usr/share/icons/Papirus ] || [ -d "$HOME/.local/share/icons/Papirus" ] && ok "Papirus icons (folder colours follow the colour theme)" || warn "Papirus icon theme not installed: folder icons will not follow the colour theme."
 have gpu-screen-recorder && ok "gpu-screen-recorder (screen recording)" || warn "gpu-screen-recorder not installed: screenshots work, recording will say it is missing."
-case "$PV" in 6.6*) ;; *) [ -f /usr/include/vulkan/vulkan.h ] || warn "Vulkan headers not installed (vulkan-headers / libvulkan-dev): from 6.7 on, KWin's development files need them, the glass KWin effect will not configure without." ;; esac
+# KWin's CMake config refuses to be found unless these are installed too, and the distros' kwin dev packages do not pull
+# them in (seen on Fedora 44: epoxy and drm; Vulkan from 6.7 on everywhere)
+. /etc/os-release 2>/dev/null || true
+case "${ID:-}${ID_LIKE:-}" in *fedora*|*rhel*) PK_EPOXY=libepoxy-devel PK_DRM=libdrm-devel PK_VULKAN=vulkan-headers ;; *arch*) PK_EPOXY=libepoxy PK_DRM=libdrm PK_VULKAN=vulkan-headers ;; *) PK_EPOXY=libepoxy-dev PK_DRM=libdrm-dev PK_VULKAN=libvulkan-dev ;; esac
+have pkg-config && { pkg-config --exists epoxy || warn "epoxy development files not installed ($PK_EPOXY): the glass KWin effect will not configure without them."; pkg-config --exists libdrm || warn "libdrm development files not installed ($PK_DRM): the glass KWin effect will not configure without them."; }
+case "$PV" in 6.6*) ;; *) [ -f /usr/include/vulkan/vulkan.h ] || warn "Vulkan headers not installed ($PK_VULKAN): from 6.7 on, KWin's development files need them, the glass KWin effect will not configure without." ;; esac
 [ -f /usr/include/kwin/effect/effect.h ] || [ -f /usr/include/kwin/effect/offscreeneffect.h ] || { HAVE_EFFECT_DEPS=0; warn "KWin's development headers are not installed (kwin-dev / kwin): the glass KWin effect cannot be built until they are."; }
 if [ $FATAL = 1 ]; then say; bad "This system cannot run the shell (see the red lines). Nothing was changed."; [ $DRY = 1 ] || exit 1; fi
-say "  ${D}Build dependencies are listed in shell/README.md (\"Build dependencies\"); a failed build names what is missing.${N}"
+say "  ${D}Build dependencies are listed in shell/README.md (\"Build dependencies\": Ubuntu, Fedora and Arch names); a failed build names what is missing.${N}"
 
 # ------------------------------------------------------------------------------------------------ 3. risks
 head_ "2. What you should know before you say yes"

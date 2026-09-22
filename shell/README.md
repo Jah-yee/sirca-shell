@@ -49,6 +49,19 @@ sudo apt install build-essential cmake extra-cmake-modules qt6-base-dev qt6-decl
 Runtime QML modules (normally present on a Plasma desktop): `plasma-workspace`, `plasma-nm`, `plasma-pa`, `powerdevil`,
 `milou`, `qml6-module-org-kde-pipewire`, `qml6-module-org-kde-bluezqt`, `qml6-module-qt5compat-graphicaleffects`.
 
+Fedora (tested in a Fedora 44 sandbox, Plasma 6.7.5):
+
+```
+sudo dnf install cmake gcc-c++ extra-cmake-modules qt6-qtbase-devel qt6-qtdeclarative-devel layer-shell-qt-devel \
+  libplasma-devel kf6-kwayland-devel kf6-kwindowsystem-devel kf6-kpackage-devel kf6-kconfig-devel kf6-ki18n-devel \
+  kf6-kglobalaccel-devel kf6-kservice-devel kf6-kguiaddons-devel
+```
+
+and for the KWin effect: `kwin-devel kdecoration-devel kf6-kcmutils-devel libepoxy-devel libdrm-devel vulkan-headers`
+(KWin's development files need epoxy, drm and the Vulkan headers to be found by CMake, and Fedora does not pull them in).
+For the Qt style and decoration: `kf6-frameworkintegration-devel kf6-kcolorscheme-devel kf6-kiconthemes-devel
+kf6-kirigami-devel qt6-qtdeclarative-devel`.
+
 On Arch the equivalents are `extra-cmake-modules qt6-base qt6-declarative layer-shell-qt libplasma kwayland
 kwindowsystem kpackage kconfig ki18n kglobalaccel kservice kguiaddons` plus `plasma-workspace plasma-nm plasma-pa
 powerdevil milou kpipewire bluez-qt qt6-5compat` (untested).
