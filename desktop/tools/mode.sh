@@ -4,6 +4,8 @@
 #   libadwaita + the portal's colour-scheme (Firefox, Electron, Ghostty follow that), icon theme, and the wallpaper.
 # Wallpapers per mode live in the shell's config: "wallpaperDark" / "wallpaperLight" (set with:  glass-mode wallpaper light FILE).
 set -euo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
+qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"; CFG="$HOME/.config/sirca-shell/config.json"; C="$HOME/.config"
 PY=/usr/bin/python3
 cfg_get() { $PY - "$CFG" "$1" <<'P'

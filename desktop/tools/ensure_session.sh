@@ -1,6 +1,8 @@
 #!/bin/bash
 # Run once per login (glass-desktop-ensure.service). Re-asserts every piece of the look, repairing only what drifted
 # (a KDE update resetting the GTK css, another theme applied by accident, …). Only acts while Sirca Shell is switched on.
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
+qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 systemctl --user is-enabled -q sirca-shell.service 2>/dev/null || exit 0
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; fixed=()
 [ "$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)" = Glass ] || { plasma-apply-colorscheme Glass >/dev/null 2>&1 && fixed+=("colour scheme"); }

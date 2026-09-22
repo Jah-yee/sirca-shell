@@ -6,6 +6,8 @@
 #  - Glass Key + the Glass effect's ForceBlurClasses get the Miniplayer's window class.
 # The look itself is apps/spotify/user.css ("html.glass-pip"), injected by apps/spotify/glass-live.js.
 set -euo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
+qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 R="$HOME/.config/kwinrulesrc"; G="Windeco Exception 0"
 rules() { /usr/bin/python3 - "$R" "$1" <<'P'
 import os, re, sys

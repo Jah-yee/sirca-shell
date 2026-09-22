@@ -2,6 +2,8 @@
 # nest_test.sh <plugin .so> <out.png> [app] — load a decoration build in a NESTED KWin (no root, no touching the session),
 # screenshot it, quit. How decoration changes get looked at before anyone is asked to install them.
 set -euo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
+qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 SO="$1"; OUT="$2"; APP="${3:-kwrite}"; R="$(mktemp -d)"; ID="$(basename "$SO" .so)"
 mkdir -p "$R/plugins/org.kde.kdecoration3" "$R/config"; cp "$SO" "$R/plugins/org.kde.kdecoration3/"
 cp ~/.config/kwinrc ~/.config/darklyrc ~/.config/kdeglobals "$R/config/" 2>/dev/null || true

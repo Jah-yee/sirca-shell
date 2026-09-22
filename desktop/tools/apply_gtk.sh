@@ -1,6 +1,8 @@
 #!/bin/bash
 # apply_gtk.sh apply|revert — GTK 3, GTK 4/libadwaita and Flatpak apps get the generated Glass look (user level, no root).
 set -euo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
+qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; B="$HOME/.local/state/glass-desktop/gtk-backup"; C="$HOME/.config"
 FILES=(gtk-3.0/gtk.css gtk-3.0/settings.ini gtk-4.0/gtk.css gtk-4.0/gtk-dark.css gtk-4.0/settings.ini)
 case "${1:-}" in

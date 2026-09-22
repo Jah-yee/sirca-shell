@@ -2,7 +2,7 @@
 Type=Application
 Name=Sirca Settings
 Comment=Settings of the Sirca Shell: glass, haze, bar, dock, behaviour
-Exec=qdbus6 onur.SircaShell /SircaShell openSettings
+Exec=sh -c "command -v qdbus6 >/dev/null && exec qdbus6 onur.SircaShell /SircaShell openSettings; exec qdbus-qt6 onur.SircaShell /SircaShell openSettings"
 Icon=preferences-desktop-theme-global
 Categories=Settings;
 Keywords=glass;shell;dock;bar;theme;
