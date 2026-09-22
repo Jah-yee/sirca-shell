@@ -155,7 +155,12 @@ i_mode() {
     fi
     run "bundled wallpapers to ~/.local/share/wallpapers/sirca" bash -c 'mkdir -p "$HOME/.local/share/wallpapers/sirca" && cp -n "$0"/wallpapers/*.jpg "$HOME/.local/share/wallpapers/sirca/"' "$ROOT" || return 1
     run "glass-mode and its helpers on your PATH (links into this folder: keep it)" bash -c 'mkdir -p "$HOME/.local/bin" && ln -sfn "$0/desktop/tools/mode.sh" "$HOME/.local/bin/glass-mode" && ln -sfn "$0/desktop/tools/lock_state.sh" "$HOME/.local/bin/glass-lock-sync" && ln -sfn "$0/desktop/tools/folder_color.sh" "$HOME/.local/bin/glass-folder-color"' "$ROOT" || return 1
-    run "seven colour themes in the shell's config (kept if you already have themes)" python3 "$ROOT/setups/write_themes.py" "$HOME/.local/share/wallpapers/sirca"; }
+    run "seven colour themes in the shell's config (kept if you already have themes)" python3 "$ROOT/setups/write_themes.py" "$HOME/.local/share/wallpapers/sirca" || return 1
+    # The icon theme itself. glass-mode only switches BETWEEN Papirus variants (and colours the folders) when a Papirus
+    # theme is already in use, so on a fresh system nothing ever selected it: the bar and dock kept drawing Breeze's icons.
+    run "icon theme: Papirus-Dark (your previous choice is kept in $STATE/icon-theme.txt)" bash -c 'cur=$(kreadconfig6 --file kdeglobals --group Icons --key Theme); [ -f "$0/icon-theme.txt" ] || echo "${cur:-breeze}" > "$0/icon-theme.txt"; case "$cur" in Papirus*|Glass-Papirus*) exit 0;; esac; t=Papirus-Dark; [ "$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(\"mode\",\"dark\"))" "$HOME/.config/sirca-shell/config.json" 2>/dev/null)" = light ] && t=Papirus; for h in /usr/lib/x86_64-linux-gnu/libexec/plasma-changeicons /usr/lib/libexec/plasma-changeicons /usr/libexec/plasma-changeicons /usr/lib64/libexec/plasma-changeicons; do [ -x "$h" ] && { "$h" "$t" >/dev/null 2>&1 && exit 0; }; done; kwriteconfig6 --file kdeglobals --group Icons --key Theme "$t"' "$STATE"
+    # and the colour theme once, so the folder icons wear the accent from the start (glass-mode derives Glass-Papirus-<colour>)
+    run "apply the colour theme once (folder icons in the theme colour)" bash -c '"$HOME/.local/bin/glass-mode" theme "$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(\"theme\",\"blue\"))" "$HOME/.config/sirca-shell/config.json" 2>/dev/null || echo blue)" >/dev/null 2>&1 || true'; }
 i_lock() { run "lock screen (active from the next login)" "$ROOT/desktop/tools/install_lock.sh"; }
 i_qt() {
     run "configure the Qt style and decoration" cmake -S "$ROOT/desktop/qt/darkly-fork" -B "$ROOT/desktop/qt/darkly-fork/build" -DCMAKE_BUILD_TYPE=Release -DBUILD_QT5=OFF || return 1

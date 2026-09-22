@@ -18,6 +18,7 @@ fi
     run "back to the Darkly decoration" "$ROOT/desktop/tools/use_decoration.sh" darkly; run "restore the plugins (sudo)" sudo "$ROOT/desktop/tools/install_qt.sh" --undo; }
 ask "Revert the KDE colour scheme and GTK look to what you had before?" && run "revert the look" "$ROOT/desktop/tools/apply_all.sh" revert
 ask "Remove the lock screen (Plasma's own from the next login)?" && run "remove the lock screen" "$ROOT/desktop/tools/install_lock.sh" --undo
+[ -f "$STATE/icon-theme.txt" ] && ask "Icon theme back to what you had ($(cat "$STATE/icon-theme.txt"))?" && run "restore the icon theme" bash -c 't=$(cat "$0/icon-theme.txt"); for h in /usr/lib/x86_64-linux-gnu/libexec/plasma-changeicons /usr/lib/libexec/plasma-changeicons /usr/libexec/plasma-changeicons /usr/lib64/libexec/plasma-changeicons; do [ -x "$h" ] && { "$h" "$t" >/dev/null 2>&1 && exit 0; }; done; kwriteconfig6 --file kdeglobals --group Icons --key Theme "$t"' "$STATE"
 ask "Remove glass-mode and its helper links from ~/.local/bin?" && run "remove the links" rm -f "$HOME/.local/bin/glass-mode" "$HOME/.local/bin/glass-lock-sync" "$HOME/.local/bin/glass-folder-color"
 run "remove the shell itself" "$ROOT/shell/uninstall.sh"
 ask "Also delete your shell config (~/.config/sirca-shell) and the bundled wallpapers?" && run "delete config and wallpapers" rm -rf "$HOME/.config/sirca-shell" "$HOME/.local/share/wallpapers/sirca"
