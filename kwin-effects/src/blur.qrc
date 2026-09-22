@@ -1,5 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="/effects/glass/">
+<qresource prefix="/effects/glass-lobes/">
   <file>generated/downsample.frag</file>
   <file>generated/noise.frag</file>
   <file>generated/onscreen_rounded.frag</file>

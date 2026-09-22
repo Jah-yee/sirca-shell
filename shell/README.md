@@ -57,6 +57,8 @@ sudo dnf install cmake gcc-c++ extra-cmake-modules qt6-qtbase-devel qt6-qtdeclar
   kf6-kglobalaccel-devel kf6-kservice-devel kf6-kguiaddons-devel
 ```
 
+Runtime on Fedora: `plasma-milou` (the search; the shell exits without it), `plasma-nm plasma-pa powerdevil kpipewire kf6-bluez-qt qt6-qt5compat`.
+
 and for the KWin effect: `kwin-devel kdecoration-devel kf6-kcmutils-devel libepoxy-devel libdrm-devel vulkan-headers`
 (KWin's development files need epoxy, drm and the Vulkan headers to be found by CMake, and Fedora does not pull them in).
 For the Qt style and decoration: `kf6-frameworkintegration-devel kf6-kcolorscheme-devel kf6-kiconthemes-devel
