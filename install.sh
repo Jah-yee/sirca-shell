@@ -57,7 +57,8 @@ case "$GPU" in *NVIDIA*|*nvidia*) ok "GPU: ${GPU:0:60}  (what this was developed
 OUTS="$(kscreen-doctor -j 2>/dev/null | "${PYS:-python3}" -c 'import json,sys; print(sum(1 for o in json.load(sys.stdin).get("outputs", []) if o.get("enabled")))' 2>/dev/null || echo 1)"
 [ "${OUTS:-1}" -gt 1 ] && warn "$OUTS screens: the bar and dock appear on the PRIMARY screen only; the others get none (yet)." || ok "one screen"
 "$PYS" -c 'import PIL, numpy' 2>/dev/null && ok "python: Pillow + numpy (wallpaper tools)" || warn "python Pillow / numpy missing: the bundled wallpapers still work, only re-colouring your own wallpaper will not."
-[ -d /usr/share/icons/Papirus ] || [ -d "$HOME/.local/share/icons/Papirus" ] && ok "Papirus icons (folder colours follow the colour theme)" || warn "Papirus icon theme not installed: folder icons will not follow the colour theme."
+HAVE_PAPIRUS=0; { [ -d /usr/share/icons/Papirus ] || [ -d "$HOME/.local/share/icons/Papirus" ]; } && HAVE_PAPIRUS=1
+[ $HAVE_PAPIRUS = 1 ] && ok "Papirus icons (the look uses them; folder colours follow the colour theme)" || warn "Papirus icon theme not installed: the look step installs it into ~/.local/share/icons (about 200 MB, from github.com/PapirusDevelopmentTeam)."
 MILOU_OK=0; for d in "$(qtpaths6 --qml-dir 2>/dev/null)" "$(qmake6 -query QT_INSTALL_QML 2>/dev/null)" /usr/lib64/qt6/qml /usr/lib/qt6/qml /usr/lib/x86_64-linux-gnu/qt6/qml; do [ -n "$d" ] && [ -f "$d/org/kde/milou/qmldir" ] && MILOU_OK=1; done
 [ $MILOU_OK = 1 ] || { bad "the Milou QML module is missing (package: plasma-milou on Fedora, milou on Arch and Ubuntu): the shell's search uses it and the shell exits at start without it."; FATAL=1; }
 have gpu-screen-recorder && ok "gpu-screen-recorder (screen recording)" || warn "gpu-screen-recorder not installed: screenshots work, recording will say it is missing."
@@ -124,7 +125,7 @@ say "         screenshots, tile picker, window switcher, power menu, edit mode, 
 [ ${ON[effect]} = 1 ] && say "  ${G}Works:${N} real glass: blur and refraction behind the bar, dock and their popups, the lit edge." \
                      || say "  ${Y}Not:${N}   blur, refraction and the lit edge (the KWin effect was not chosen): flat translucent surfaces instead."
 [ ${ON[look]} = 1 ]  && say "  ${G}Works:${N} KDE and GTK apps in the matching colours." || say "  ${Y}Not:${N}   apps keep your current colours."
-[ ${ON[mode]} = 1 ]  && say "  ${G}Works:${N} one switch for light / dark and 7 colour themes across shell, apps, icons and wallpaper (cross-faded)." \
+[ ${ON[mode]} = 1 ]  && say "  ${G}Works:${N} one switch for light / dark and 7 colour themes across shell, apps, icons (Papirus, folders in the theme colour) and wallpaper (cross-faded)." \
                      || say "  ${Y}Not:${N}   the desktop-wide light/dark switch and colour themes (the shell's own light mode still works)."
 [ ${ON[qt]} = 1 ]    && say "  ${G}Works:${N} frosted Qt apps (Dolphin, System Settings) and the glass window decoration." \
                      || say "  ${Y}Not:${N}   frosted Qt apps and the glass title bars (Qt style + decoration not chosen)."
@@ -148,6 +149,9 @@ i_effect() {
     run "switch KWin's own blur off, the glass effect on" bash -c 'kwriteconfig6 --file kwinrc --group Plugins --key blurEnabled false; kwriteconfig6 --file kwinrc --group Plugins --key glassEnabled true; kwriteconfig6 --file kwinrc --group Plugins --key glasskeyEnabled true; qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.unloadEffect blur >/dev/null; qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glass >/dev/null; qdbus6 org.kde.KWin /Effects org.kde.kwin.Effects.loadEffect glasskey >/dev/null; true'; }
 i_look() { run "KDE colour scheme and GTK look (backups in ~/.local/state/glass-desktop)" "$ROOT/desktop/tools/apply_all.sh" apply; }
 i_mode() {
+    if [ "$HAVE_PAPIRUS" = 0 ]; then
+        run "Papirus icon theme into ~/.local/share/icons (no root; the official installer, about 200 MB)" bash -c 'mkdir -p "$HOME/.local/share/icons" && curl -fsSL https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-icon-theme/master/install.sh | DESTDIR="$HOME/.local/share/icons" sh' || return 1
+    fi
     run "bundled wallpapers to ~/.local/share/wallpapers/sirca" bash -c 'mkdir -p "$HOME/.local/share/wallpapers/sirca" && cp -n "$0"/wallpapers/*.jpg "$HOME/.local/share/wallpapers/sirca/"' "$ROOT" || return 1
     run "glass-mode and its helpers on your PATH (links into this folder: keep it)" bash -c 'mkdir -p "$HOME/.local/bin" && ln -sfn "$0/desktop/tools/mode.sh" "$HOME/.local/bin/glass-mode" && ln -sfn "$0/desktop/tools/lock_state.sh" "$HOME/.local/bin/glass-lock-sync" && ln -sfn "$0/desktop/tools/folder_color.sh" "$HOME/.local/bin/glass-folder-color"' "$ROOT" || return 1
     run "seven colour themes in the shell's config (kept if you already have themes)" python3 "$ROOT/setups/write_themes.py" "$HOME/.local/share/wallpapers/sirca"; }

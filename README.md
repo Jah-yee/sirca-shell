@@ -62,7 +62,8 @@ a clipboard history with pinning (Meta+V).
 
 ### Light, dark and seven colours
 
-One switch changes the shell, KDE and GTK apps, the icons and the wallpaper at the same time, in one cross-fade.
+One switch changes the shell, KDE and GTK apps, the icons and the wallpaper at the same time, in one cross-fade. The
+wallpapers in the pictures are the ones in `wallpapers/`, so what you install looks like this.
 
 | Dark | Light |
 |:--:|:--:|
@@ -118,7 +119,7 @@ Keep the cloned folder if you install the light/dark switch. `glass-mode` and th
 | `shell/` | the shell itself (C++ and QML). Its README lists every feature, the settings, scripting and the build dependencies |
 | `kwin-effects/` | the glass KWin effect (blur, refraction, lit edge, shapes the shell describes to it) and Glass Key, which puts glass inside apps that paint opaque windows |
 | `desktop/` | the look for everything else: KDE colour scheme, GTK 3 and 4, Qt style and window decoration, `glass-mode` (light, dark, colour themes), the lock screen and the app extras |
-| `wallpapers/` | one original picture in seven colours, dark and light |
+| `wallpapers/` | the wallpapers I use: one picture in seven colours, dark and light (5120 × 1440) |
 | `setups/` | the colour themes, and my bar and dock layout as a file for `sirca-shell-setup import` |
 
 ## Licence and credits
@@ -130,6 +131,7 @@ folder keeps their notices:
 - `desktop/qt/darkly-fork/` is a fork of **Darkly** (itself a fork of Lightly / Breeze), GPL-2.0-or-later; see its `COPYING`.
 - `desktop/third_party/adw-gtk3/` is **adw-gtk3** by lassekongo83, LGPL-2.1.
 - `shell/qml/control/` derives from **Plasma Control Hub** by zayronxio; `shell/applets/` holds forks of KDE Plasma applets (their headers are kept).
-- Fonts: **Outfit** and **Inter**, SIL Open Font License. Icons are not bundled; the look assumes Papirus.
+- Fonts: **Outfit** and **Inter**, SIL Open Font License.
+- Icons: **Papirus** (GPL-3) by the Papirus Development Team. Not bundled; the installer fetches it if you do not have it, and the folder colours follow the colour theme.
 
 Thank you to all of them.
