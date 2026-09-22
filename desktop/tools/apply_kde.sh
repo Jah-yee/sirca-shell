@@ -3,7 +3,7 @@
 # apply keeps a dated backup of every file it touches in ~/.local/state/glass-desktop/kde-backup/ (first apply only).
 set -euo pipefail
 # qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora
-qdbus6() { if command -v qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
+qdbus6() { if type -P qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; B="$HOME/.local/state/glass-desktop/kde-backup"; SCHEMES="$HOME/.local/share/color-schemes"
 case "${1:-}" in
   apply)
