@@ -5,6 +5,9 @@
 # It installs for the CURRENT USER. Two optional components need sudo (the KWin effect and the Qt style); you are asked
 # before sudo is used, and each component tells you how to undo it. Everything is undone by ./uninstall.sh.
 set -uo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora (exported: the steps run through bash -c)
+qdbus6() { if type -P qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
+export -f qdbus6
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 DRY=0; YES=0; PRESET=""
 while [ $# -gt 0 ]; do case "$1" in --dry-run) DRY=1 ;; --yes|-y) YES=1 ;; --preset) PRESET="${2:-}"; shift ;; -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; *) echo "unknown option: $1"; exit 2 ;; esac; shift; done

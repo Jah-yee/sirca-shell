@@ -2,6 +2,9 @@
 # Sirca Shell — remove what ./install.sh installed. Asks before each part; your own config and wallpapers are kept unless
 # you say otherwise.      ./uninstall.sh [--dry-run]
 set -uo pipefail
+# qdbus is "qdbus6" on Ubuntu / Arch and "qdbus-qt6" on Fedora (exported: the steps run through bash -c)
+qdbus6() { if type -P qdbus6 >/dev/null 2>&1; then command qdbus6 "$@"; else qdbus-qt6 "$@"; fi; }
+export -f qdbus6
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"; STATE="$HOME/.local/state/sirca-shell"; DRY=0; [ "${1:-}" = "--dry-run" ] && DRY=1
 ask() { local a; read -r -p "$1 [y/N] " a </dev/tty || a=""; case "$a" in y|Y|yes) return 0 ;; *) return 1 ;; esac; }
 run() { local what="$1"; shift; if [ $DRY = 1 ]; then echo "  [dry run] $what:  $*"; else echo "  … $what"; "$@" || echo "    (that step reported a problem; continuing)"; fi; }
